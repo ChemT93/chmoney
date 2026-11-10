@@ -117,10 +117,15 @@ nav button b{display:block;font-size:20px;line-height:1.2}
 nav button.on{color:var(--acc);font-weight:700}
 .hd-r{display:flex;align-items:center;gap:8px}
 .gear{border:0;background:var(--chip);color:var(--ink);border-radius:8px;width:34px;height:34px;font-size:17px}
+.spv{display:flex;flex-direction:column;align-items:center;gap:6px;background:var(--bg);border-radius:12px;padding:22px 12px;margin-bottom:10px;text-align:center}
+.spv img{width:80px;height:80px;border-radius:18px;object-fit:cover}.spv img.round{width:100px;height:100px;border-radius:24px}.spv img.circle{width:100px;height:100px}
+.spv b{font-size:18px}.spv small{color:var(--sub);font-size:13px}
+.cfbtns{display:grid;grid-template-columns:1fr 1fr;gap:8px}.cfbtns .ghost{margin-top:0}
 .keybox p{color:var(--sub);font-size:14px;margin:0 0 10px}
 .ghost{width:100%;border:1px solid var(--line);background:none;color:var(--ink);border-radius:12px;padding:13px;font-size:15px;margin-top:10px}
 #splash{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center}
-#splash img{width:96px;height:96px;border-radius:22px;margin-bottom:16px}
+#splash img{width:96px;height:96px;border-radius:22px;margin-bottom:16px;object-fit:cover}
+#splash img.round,.spv img.round{width:132px;height:132px;border-radius:30px}#splash img.circle,.spv img.circle{width:132px;height:132px;border-radius:50%}
 #splash h2{margin:0 0 6px;font-size:22px}
 #spMsg{color:var(--sub);font-size:14px;margin:0 0 18px;min-height:20px;white-space:pre-line}
 #spMsg.bad{color:var(--exp)}
@@ -135,18 +140,41 @@ svg text{fill:var(--sub);font-size:11px}
 </head>
 <body>
 <div id="splash">
-  <img src="icon-192.png" alt="">
-  <h2>우리집 가계부</h2>
+  <img id="spImg" src="icon-192.png" alt="">
+  <h2 id="spTitle">우리집 가계부</h2>
   <p id="spMsg">불러오는 중…</p>
   <form id="spForm" hidden onsubmit="spSubmit();return false">
     <input type="password" id="spKey" placeholder="비밀 키" autocomplete="current-password" enterkeyhint="go">
     <button class="primary" type="submit">시작하기</button>
   </form>
 </div>
+<script>
+// 이 휴대폰에 저장된 시작 화면 꾸미기를 바로 적용
+const SPLASH_DEF={title:'우리집 가계부',msg:'불러오는 중…',img:'',shape:'round'};
+function splashCfg(){try{return Object.assign({},SPLASH_DEF,JSON.parse(localStorage.getItem('splash')||'{}'))}catch(e){return Object.assign({},SPLASH_DEF)}}
+function applySplash(c){c=c||splashCfg();
+  document.getElementById('spImg').src=c.img||'icon-192.png';
+  document.getElementById('spImg').className=c.img?c.shape:'';
+  document.getElementById('spTitle').textContent=c.title||SPLASH_DEF.title;
+  document.getElementById('spMsg').textContent=c.msg||SPLASH_DEF.msg;}
+applySplash();
+</script>
 <header><h1 id="title">가계부</h1><div class="hd-r"><div class="mnav" id="mnav" hidden><button onclick="moveMonth(-1)">‹</button><span id="mlabel"></span><button onclick="moveMonth(1)">›</button></div><button class="gear" id="gear" onclick="showKey(true)" aria-label="설정">⚙</button></div></header>
 <main>
   <section id="v-key" hidden>
+    <div class="card">
+      <div class="sec">시작 화면 꾸미기</div>
+      <div class="spv"><img id="cfImg" alt=""><b id="cfTitleV"></b><small id="cfMsgV"></small></div>
+      <input type="file" id="cfFile" accept="image/*" hidden>
+      <div class="cfbtns"><button class="ghost" onclick="$('cfFile').click()">📷 사진 고르기</button><button class="ghost" id="cfNoImg" onclick="cfSet({img:''})">기본 아이콘</button></div>
+      <div id="cfShapeWrap"><label>사진 모양</label><div class="chips" id="cfShape"></div></div>
+      <label>제목</label><input type="text" id="cfTitle" maxlength="20" placeholder="우리집 가계부">
+      <label>불러오는 동안 나오는 문구</label><input type="text" id="cfMsg" maxlength="40" placeholder="불러오는 중…">
+      <button class="primary" onclick="cfSave()">시작 화면 저장</button>
+      <button class="ghost" onclick="cfReset()">기본으로 되돌리기</button>
+    </div>
     <div class="card keybox">
+      <div class="sec">비밀 키</div>
       <p>키가 바뀌었을 때만 새 키를 입력하세요. 확인되면 이 휴대폰에서는 다시 묻지 않아요.</p>
       <input type="password" id="keyIn" placeholder="비밀 키" autocomplete="off">
       <button class="primary" onclick="saveKey()">새 키로 바꾸기</button>
@@ -219,7 +247,7 @@ function takeHash(){
 takeHash();
 addEventListener('hashchange',()=>{if(takeHash()){store.del('ok');$('v-key').hidden=true;boot()}});
 // 시작 화면: 확인된 키가 있으면 로고만 잠깐, 없으면 키 입력
-function splashLoading(){$('splash').hidden=false;$('spForm').hidden=true;$('spMsg').className='';$('spMsg').textContent='불러오는 중…'}
+function splashLoading(){$('splash').hidden=false;$('spForm').hidden=true;$('spMsg').className='';$('spMsg').textContent=splashCfg().msg}
 function splashAsk(msg,bad){
   $('splash').hidden=false;$('spForm').hidden=false;
   $('spMsg').className=bad?'bad':'';$('spMsg').textContent=msg||'처음 한 번만 비밀 키를 입력해 주세요.\n확인되면 이 휴대폰에서는 다시 묻지 않아요.';
@@ -229,7 +257,29 @@ async function spSubmit(){
   const v=$('spKey').value.trim();if(!v){$('spMsg').className='bad';$('spMsg').textContent='키를 입력해 주세요';return}
   store.set('key',v);store.del('ok');await boot();
 }
-function showKey(fromGear){
+// 시작 화면 꾸미기 (이 휴대폰에만 저장)
+let CF=null;
+function cfRender(){
+  $('cfImg').src=CF.img||'icon-192.png';$('cfImg').className=CF.img?CF.shape:'';
+  $('cfTitleV').textContent=$('cfTitle').value.trim()||SPLASH_DEF.title;$('cfMsgV').textContent=$('cfMsg').value.trim()||SPLASH_DEF.msg;
+  $('cfShapeWrap').hidden=!CF.img;$('cfNoImg').hidden=!CF.img;
+  chips($('cfShape'),['둥근 네모','동그라미'],CF.shape==='circle'?'동그라미':'둥근 네모',v=>{CF.shape=v==='동그라미'?'circle':'round';cfRender()});
+}
+function cfSet(o){Object.assign(CF,o);cfRender()}
+function cfOpen(){CF=splashCfg();$('cfTitle').value=CF.title===SPLASH_DEF.title?'':CF.title;$('cfMsg').value=CF.msg===SPLASH_DEF.msg?'':CF.msg;cfRender()}
+$('cfTitle').addEventListener('input',cfRender);$('cfMsg').addEventListener('input',cfRender);
+$('cfFile').addEventListener('change',ev=>{const f=ev.target.files[0];ev.target.value='';if(!f)return;
+  const url=URL.createObjectURL(f),im=new Image();
+  im.onload=()=>{const s=Math.min(im.naturalWidth,im.naturalHeight),N=360,c=document.createElement('canvas');c.width=c.height=N;   // 가운데 정사각형으로 잘라 작게 저장
+    c.getContext('2d').drawImage(im,(im.naturalWidth-s)/2,(im.naturalHeight-s)/2,s,s,0,0,N,N);URL.revokeObjectURL(url);cfSet({img:c.toDataURL('image/jpeg',.85)})};
+  im.onerror=()=>toast('사진을 열지 못했어요');im.src=url});
+function cfSave(){
+  const c={title:$('cfTitle').value.trim()||SPLASH_DEF.title,msg:$('cfMsg').value.trim()||SPLASH_DEF.msg,img:CF.img,shape:CF.shape};
+  try{localStorage.setItem('splash',JSON.stringify(c))}catch(e){toast('저장 공간이 부족해요. 다른 사진을 골라 주세요');return}
+  applySplash(c);toast('시작 화면을 저장했어요');
+}
+function cfReset(){try{localStorage.removeItem('splash')}catch(e){}applySplash();cfOpen();toast('기본 시작 화면으로 되돌렸어요')}
+function showKey(fromGear){cfOpen();
   ['add','sum','list','year','err'].forEach(x=>$('v-'+x).hidden=true);
   $('v-key').hidden=false;$('mnav').hidden=true;$('title').textContent=fromGear?'설정':'비밀 키';
   const has=!!store.get('key');$('keyCancel').hidden=!has;$('keyClear').hidden=!has;$('keyIn').value='';
