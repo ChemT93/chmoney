@@ -1,5 +1,5 @@
 // 앱 화면 파일만 저장해 두고, 가계부 데이터는 항상 서버에서 새로 받습니다.
-const CACHE = 'gagyebu-v1';
+const CACHE = 'gagyebu-v2';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
 self.addEventListener('install', e => e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())));
 self.addEventListener('activate', e => e.waitUntil(

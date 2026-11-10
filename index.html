@@ -80,6 +80,13 @@ svg text{fill:var(--sub);font-size:11px}
       <button class="ghost" id="keyClear" onclick="clearKey()">이 휴대폰에서 키 지우기</button>
     </div>
   </section>
+  <section id="v-err" hidden>
+    <div class="card keybox">
+      <p id="errMsg"></p>
+      <button class="primary" onclick="boot()">다시 시도</button>
+      <button class="ghost" onclick="showKey(true)">비밀 키 다시 입력</button>
+    </div>
+  </section>
   <section id="v-add">
     <div class="card">
       <div class="seg"><button id="k-expense" class="on" onclick="setKind('expense')">지출</button><button id="k-income" onclick="setKind('income')">수입</button></div>
@@ -118,8 +125,8 @@ async function call(fn,...args){
   if(!apiUrl())throw new Error('서버 주소가 아직 설정되지 않았어요');
   let res;
   try{res=await fetch(apiUrl(),{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({key,fn,args})})}
-  catch(e){throw new Error('인터넷 연결을 확인해 주세요')}
-  let j;try{j=await res.json()}catch(e){throw new Error('서버 응답을 읽지 못했어요')}
+  catch(e){throw new Error('서버에 연결하지 못했어요. 인터넷 연결과, Apps Script 배포 설정(실행: 나 / 액세스: 모든 사용자)을 확인해 주세요.')}
+  let j;try{j=await res.json()}catch(e){throw new Error('서버 응답을 읽지 못했어요. Apps Script를 새 버전으로 다시 배포했는지 확인해 주세요.')}
   if(j.code===401){store.del('key');showKey(false);throw new Error(j.error)}
   if(!j.ok)throw new Error(j.error||'오류가 났어요');
   return j.data;
@@ -136,11 +143,11 @@ function takeHash(){
 takeHash();
 addEventListener('hashchange',()=>{if(takeHash()){$('v-key').hidden=true;boot()}});
 function showKey(fromGear){
-  ['add','sum','list','year'].forEach(x=>$('v-'+x).hidden=true);
+  ['add','sum','list','year','err'].forEach(x=>$('v-'+x).hidden=true);
   $('v-key').hidden=false;$('mnav').hidden=true;$('title').textContent=fromGear?'설정':'비밀 키';
   const has=!!store.get('key');$('keyCancel').hidden=!has;$('keyClear').hidden=!has;$('keyIn').value='';
 }
-function hideKey(){$('v-key').hidden=true;go(S.view||'add')}
+function hideKey(){$('v-key').hidden=true;if(S.boot)go(S.view||'add');else boot()}
 async function saveKey(){const v=$('keyIn').value.trim();if(!v){toast('키를 입력해 주세요');return}store.set('key',v);$('v-key').hidden=true;await boot()}
 function clearKey(){if(!confirm('이 휴대폰에서 키를 지울까요? 다시 입력해야 앱을 쓸 수 있어요.'))return;store.del('key');showKey(false)}
 function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),2200)}
@@ -213,7 +220,8 @@ async function loadMonth(m,force){
 function moveMonth(d){const ms=S.boot.months;const i=ms.indexOf(S.month)+d;if(i<0||i>=ms.length)return;S.month=ms[i];go(S.view)}
 
 async function go(v){
-  S.view=v;$('v-key').hidden=true;
+  if(!S.boot){showErr(S.err||'아직 불러오는 중이에요');return}
+  S.view=v;$('v-key').hidden=true;$('v-err').hidden=true;
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
   ['add','sum','list','year'].forEach(x=>$('v-'+x).hidden=x!==v);
   $('mnav').hidden=!(v==='sum'||v==='list');
@@ -274,15 +282,19 @@ async function renderYear(){
   }catch(e){el.innerHTML=`<div class="muted">${esc(e.message)}</div>`}
 }
 
+function showErr(msg){
+  ['add','sum','list','year','key'].forEach(x=>$('v-'+x).hidden=true);
+  $('v-err').hidden=false;$('mnav').hidden=true;$('title').textContent='연결 안 됨';$('errMsg').textContent=msg;
+}
 async function boot(){
-  $('date').value=today();
+  $('date').value=today();$('v-err').hidden=true;
   try{
     S.boot=await call('getBootstrap');
     if(!S.boot.ok){toast('월별 탭을 찾지 못했어요');}
     S.month=S.boot.currentMonth;
     setKind('expense');
     go('add');
-  }catch(e){toast(e.message||'불러오기 실패')}
+  }catch(e){S.err=e.message||'불러오기 실패';if(!$('v-key').hidden)return;showErr(S.err)}
 }
 if(!S.boot&&!store.get('key'))showKey(false);else boot();
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
