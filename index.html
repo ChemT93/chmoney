@@ -346,8 +346,8 @@ function setKind(k){S.kind=k;S.cat='';S.sub='';const p=store.get('pay_'+k);S.pay
 $('amt').addEventListener('input',e=>{const n=e.target.value.replace(/[^\d]/g,'');e.target.value=n?Number(n).toLocaleString('ko-KR'):''});
 
 async function save(){
-  const amount=Number($('amt').value.replace(/[^\d]/g,''));
-  if(!amount){toast('금액을 입력해 주세요');$('amt').focus();return}
+  const raw=$('amt').value.replace(/[^\d]/g,''),amount=Number(raw);
+  if(raw===''){toast('금액을 입력해 주세요 (0원도 가능)');$('amt').focus();return}
   if(!S.cat){toast('분류를 골라 주세요');return}
   const btn=$('save');btn.disabled=true;btn.textContent='저장 중…';
   try{
@@ -527,7 +527,7 @@ async function renderAnalysis(el){
     const cats=Object.entries(d.byCat).sort((a,b)=>b[1]-a[1]);const max=cats.length?cats[0][1]:1;
     html+=`<div class="card">${sec('분류별 지출')}${cats.map(([k,v])=>{
       const list=exps.filter(e=>(e.cat||'미분류')===k).sort((a,b)=>b.amount-a.amount);
-      return `<details class="cat"><summary><span class="ce">${EMOJI[k]||'🏷️'}</span><span class="cn">${esc(k)}</span><span class="cb"><i style="width:${Math.max(3,v/max*100)}%"></i></span><span class="cv"><b>${won(v)}</b><small>${Math.round(v/d.expense*100)}% · ${list.length}건</small></span></summary>
+      return `<details class="cat"><summary><span class="ce">${EMOJI[k]||'🏷️'}</span><span class="cn">${esc(k)}</span><span class="cb"><i style="width:${Math.max(3,v/max*100)}%"></i></span><span class="cv"><b>${won(v)}</b><small>${Math.round(v/(d.expense||1)*100)}% · ${list.length}건</small></span></summary>
         ${list.map(e=>`<div class="mini"><span>${e.date?Number(e.date.slice(8))+'일 ':''}${esc(e.memo||e.sub||'-')}</span><span>${won(e.amount)}</span></div>`).join('')}</details>`}).join('')||'<div class="muted">아직 지출이 없어요</div>'}</div>`;
     // 4. 날짜별
     const byDay=Array(dim+1).fill(0);exps.forEach(e=>{if(e.date)byDay[Number(e.date.slice(8))]+=e.amount});
@@ -538,19 +538,19 @@ async function renderAnalysis(el){
       ${[1,5,10,15,20,25,dim].map(x=>`<text x="${(x-1)*step+bw/2+1}" y="${H+13}" text-anchor="middle">${x}</text>`).join('')}</svg>
       <div class="meta">가장 많이 쓴 날: ${byDay.indexOf(dmax)>0?`${byDay.indexOf(dmax)}일 · <b>${won(dmax)}원</b>`:'-'}</div></div>`;
     // 5. 큰 지출
-    const top=[...exps].sort((a,b)=>b.amount-a.amount).slice(0,5);
+    const top=exps.filter(e=>e.amount>0).sort((a,b)=>b.amount-a.amount).slice(0,5);
     if(top.length)html+=`<div class="card">${sec('큰 지출 TOP 5')}${top.map((e,i)=>`<div class="mini"><span><b class="rank">${i+1}</b>${esc(e.memo||e.cat)} <small>${esc(e.cat)}${e.date?' · '+Number(e.date.slice(8))+'일':''}</small></span><span class="exp"><b>${won(e.amount)}</b></span></div>`).join('')}</div>`;
     // 6. 수입 구성
     if(incs.length){
       const ic={};incs.forEach(e=>{const k=e.cat||'기타';ic[k]=(ic[k]||0)+e.amount});
-      html+=`<div class="card">${sec('수입 구성')}${Object.entries(ic).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="mini"><span>${EMOJI[k]||'🏷️'} ${esc(k)}</span><span class="inc"><b>${won(v)}</b> <small>${Math.round(v/d.income*100)}%</small></span></div>`).join('')}</div>`;
+      html+=`<div class="card">${sec('수입 구성')}${Object.entries(ic).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="mini"><span>${EMOJI[k]||'🏷️'} ${esc(k)}</span><span class="inc"><b>${won(v)}</b> <small>${Math.round(v/(d.income||1)*100)}%</small></span></div>`).join('')}</div>`;
     }
     el.innerHTML=html;
   }catch(e){el.innerHTML=`<div class="muted">${esc(e.message)}</div>`}
 }
 // ---------- 내역: 수정 · 삭제 · 길게 눌러 여러 개 선택 ----------
 S.sel=new Set();S.selMode=false;
-const entryLine=e=>`<div class="mini"><span>${e.date?Number(e.date.slice(8))+'일 ':''}${esc(e.memo||e.cat||'-')}</span><span class="${e.kind==='income'?'inc':'exp'}">${e.kind==='income'?'+':'−'}${won(e.amount)}</span></div>`;
+const entryLine=e=>`<div class="mini"><span>${e.date?Number(e.date.slice(8))+'일 ':''}${esc(e.memo||e.cat||'-')}</span><span class="${e.kind==='income'?'inc':'exp'}">${e.amount?(e.kind==='income'?'+':'−'):''}${won(e.amount)}</span></div>`;
 async function renderList(){
   const el=$('v-list');el.innerHTML='<div class="muted">불러오는 중…</div>';
   try{
@@ -561,7 +561,7 @@ async function renderList(){
       if(e.date!==last){last=e.date;html+=`<div class="day">${e.date?Number(e.date.slice(5,7))+'월 '+Number(e.date.slice(8))+'일':'날짜 없음'}</div>`}
       html+=`<div class="row${S.sel.has(i)?' on':''}" data-i="${i}"><span class="ck">${S.sel.has(i)?'✓':''}</span>
         <div class="main"><div class="t">${esc(e.memo||e.cat||'(내용 없음)')}</div><div class="s">${esc([e.cat,e.sub,e.pay].filter(Boolean).join(' · '))}</div></div>
-        <div class="a"><div class="${e.kind==='income'?'inc':'exp'}">${e.kind==='income'?'+':'−'}${won(e.amount)}</div>
+        <div class="a"><div class="${e.kind==='income'?'inc':'exp'}">${e.amount?(e.kind==='income'?'+':'−'):''}${won(e.amount)}</div>
         <div class="acts"><button class="ed" data-act="edit" aria-label="수정">Edit</button><button class="dl" data-act="del" aria-label="삭제">Del</button></div></div></div>`;
     });
     el.innerHTML=html+'</div>';
@@ -683,8 +683,8 @@ function renderEditPay(open){
   if(open&&!sel.hidden){sel.focus();try{sel.showPicker()}catch(_){}}
 }
 async function saveEdit(){
-  const amount=Number($('ed-amt').value.replace(/[^\d]/g,''));
-  if(!amount){toast('금액을 입력해 주세요');return}
+  const raw=$('ed-amt').value.replace(/[^\d]/g,''),amount=Number(raw);
+  if(raw===''){toast('금액을 입력해 주세요 (0원도 가능)');return}
   if(!E.cat){toast('분류를 골라 주세요');return}
   const o=E.orig,date=$('ed-date').value||o.date;
   const ne={kind:E.kind,amount,cat:E.cat,sub:E.sub,memo:$('ed-memo').value.trim(),pay:E.pay,date};
