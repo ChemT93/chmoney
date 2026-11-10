@@ -89,7 +89,28 @@ details.cat .mini{padding:5px 0 5px 36px;color:var(--sub)}details.cat .mini:last
 .item .a{font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums;text-align:right}
 .item .del{border:0;background:none;color:var(--sub);font-size:13px;padding:2px 0}
 .day{font-size:13px;color:var(--sub);margin:14px 0 2px}
-nav{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(4,1fr);padding-bottom:env(safe-area-inset-bottom)}
+.row{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line);-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;transition:background .15s}
+.row:last-child{border:0}.row .main{flex:1;min-width:0}.row .t{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.row .s{font-size:13px;color:var(--sub)}
+.row .a{font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums;text-align:right}
+.acts{display:flex;justify-content:flex-end;gap:2px;margin-top:2px}.acts button{border:0;background:none;color:var(--sub);font-size:13px;padding:4px 6px}.acts .ed{color:var(--acc)}
+.ck{display:none;width:22px;height:22px;border-radius:50%;border:2px solid var(--line);flex:none;align-items:center;justify-content:center;font-size:13px;color:#fff}
+.selmode .ck{display:flex}.selmode .acts{display:none}
+.row.on{background:color-mix(in srgb,var(--acc) 14%,transparent);margin:0 -16px;padding-left:16px;padding-right:16px}.row.on .ck{background:var(--acc);border-color:var(--acc)}
+.hint{font-size:12px;color:var(--sub);text-align:center;margin:-4px 0 10px}
+#selbar{position:fixed;left:12px;right:12px;bottom:calc(76px + env(safe-area-inset-bottom));z-index:20;background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 6px 24px rgba(0,0,0,.25);display:flex;align-items:center;gap:8px;padding:8px 10px}
+#selbar .sb-t{flex:1;display:flex;flex-direction:column;line-height:1.2}#selbar small{color:var(--sub);font-size:12px}
+#selbar button{border:0;border-radius:10px;padding:9px 12px;font-size:14px;font-weight:600;background:var(--chip);color:var(--ink)}
+#selbar .sb-x{background:none;font-size:18px;padding:6px 8px}#selbar .sb-del{background:var(--exp);color:#fff}
+#bs{position:fixed;inset:0;z-index:40}
+.bs-back{position:absolute;inset:0;background:rgba(0,0,0,.45);animation:fade .2s}
+.bs-panel{position:absolute;left:0;right:0;bottom:0;max-height:88vh;overflow-y:auto;background:var(--card);border-radius:18px 18px 0 0;padding:6px 16px calc(16px + env(safe-area-inset-bottom));animation:up .22s ease-out}
+.bs-grab{width:40px;height:4px;border-radius:2px;background:var(--line);margin:4px auto 12px}
+.bs-title{font-size:18px;font-weight:700;margin:0 0 4px}.bs-sub{color:var(--sub);font-size:14px;margin:0 0 12px}
+.bs-list{background:var(--chip);border-radius:12px;padding:4px 12px;margin-bottom:6px}.bs-list .mini{font-size:14px}
+.bs-btns{display:grid;grid-template-columns:1fr 1.4fr;gap:8px;margin-top:14px}.bs-btns button{border:0;border-radius:12px;padding:15px;font-size:16px;font-weight:700}
+.bs-btns .no{background:var(--chip);color:var(--ink)}.bs-btns .yes{background:var(--acc);color:#fff}.bs-btns .danger{background:var(--exp);color:#fff}
+@keyframes up{from{transform:translateY(100%)}to{transform:none}}@keyframes fade{from{opacity:0}to{opacity:1}}
+nav{z-index:10;position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(4,1fr);padding-bottom:env(safe-area-inset-bottom)}
 nav button{border:0;background:none;color:var(--sub);padding:10px 0 12px;font-size:12px}
 nav button b{display:block;font-size:20px;line-height:1.2}
 nav button.on{color:var(--acc);font-weight:700}
@@ -104,7 +125,7 @@ nav button.on{color:var(--acc);font-weight:700}
 #spMsg.bad{color:var(--exp)}
 #spForm{width:100%;max-width:320px}
 #spForm input{text-align:center;font-size:18px;letter-spacing:1px}
-.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#333;color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;transition:.25s;pointer-events:none;max-width:90%}
+.toast{z-index:45;position:fixed;left:50%;top:calc(70px + env(safe-area-inset-top));transform:translateX(-50%);background:#333;color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;transition:.25s;pointer-events:none;max-width:90%}
 .toast.show{opacity:1}
 .muted{color:var(--sub);font-size:14px;text-align:center;padding:24px 0}
 svg text{fill:var(--sub);font-size:11px}
@@ -161,6 +182,8 @@ svg text{fill:var(--sub);font-size:11px}
   <button data-v="list" onclick="go('list')"><b>≡</b>내역</button>
   <button data-v="year" onclick="go('year')"><b>▥</b>연간</button>
 </nav>
+<div id="selbar" hidden><button class="sb-x" onclick="exitSel()" aria-label="선택 취소">✕</button><div class="sb-t"><b id="selN">0개 선택</b><small id="selSum"></small></div><button class="sb-all" onclick="selAll()">전체</button><button class="sb-del" onclick="askDelete([...S.sel])">삭제</button></div>
+<div id="bs" hidden><div class="bs-back" onclick="closeSheet()"></div><div class="bs-panel" role="dialog" aria-modal="true"><div class="bs-grab"></div><div id="bsBody"></div></div></div>
 <div class="toast" id="toast"></div>
 <script>
 const S={kind:'expense',cat:'',sub:'',pay:'',boot:null,month:null,cache:{},view:'add'};
@@ -284,6 +307,7 @@ function moveMonth(d){const ms=S.boot.months;const i=ms.indexOf(S.month)+d;if(i<
 
 async function go(v){
   if(!S.boot){showErr(S.err||'아직 불러오는 중이에요');return}
+  if(v!=='list'||S._m!==S.month)exitSel();S._m=S.month;
   S.view=v;$('v-key').hidden=true;$('v-err').hidden=true;
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
   ['add','sum','list','year'].forEach(x=>$('v-'+x).hidden=x!==v);
@@ -445,24 +469,126 @@ async function renderAnalysis(el){
     el.innerHTML=html;
   }catch(e){el.innerHTML=`<div class="muted">${esc(e.message)}</div>`}
 }
+// ---------- 내역: 수정 · 삭제 · 길게 눌러 여러 개 선택 ----------
+S.sel=new Set();S.selMode=false;
+const entryLine=e=>`<div class="mini"><span>${e.date?Number(e.date.slice(8))+'일 ':''}${esc(e.memo||e.cat||'-')}</span><span class="${e.kind==='income'?'inc':'exp'}">${e.kind==='income'?'+':'−'}${won(e.amount)}</span></div>`;
 async function renderList(){
   const el=$('v-list');el.innerHTML='<div class="muted">불러오는 중…</div>';
   try{
-    const d=await loadMonth(S.month);
-    if(!d.entries.length){el.innerHTML='<div class="card muted">내역이 없어요</div>';return}
-    let html='<div class="card">',last=null;
+    const d=await loadMonth(S.month);S.listData=d;
+    if(!d.entries.length){exitSel();el.innerHTML='<div class="card muted">내역이 없어요</div>';return}
+    let html=`<div class="hint">길게 누르면 여러 개를 선택할 수 있어요</div><div class="card${S.selMode?' selmode':''}" id="listCard">`,last=null;
     d.entries.forEach((e,i)=>{
       if(e.date!==last){last=e.date;html+=`<div class="day">${e.date?Number(e.date.slice(5,7))+'월 '+Number(e.date.slice(8))+'일':'날짜 없음'}</div>`}
-      html+=`<div class="item"><div><div class="t">${esc(e.memo||e.cat||'(내용 없음)')}</div><div class="s">${esc([e.cat,e.sub,e.pay].filter(Boolean).join(' · '))}</div></div>
-      <div class="a"><div class="${e.kind==='income'?'inc':'exp'}">${e.kind==='income'?'+':'−'}${won(e.amount)}</div><button class="del" data-i="${i}">삭제</button></div></div>`;
+      html+=`<div class="row${S.sel.has(i)?' on':''}" data-i="${i}"><span class="ck">${S.sel.has(i)?'✓':''}</span>
+        <div class="main"><div class="t">${esc(e.memo||e.cat||'(내용 없음)')}</div><div class="s">${esc([e.cat,e.sub,e.pay].filter(Boolean).join(' · '))}</div></div>
+        <div class="a"><div class="${e.kind==='income'?'inc':'exp'}">${e.kind==='income'?'+':'−'}${won(e.amount)}</div>
+        <div class="acts"><button class="ed" data-act="edit">수정</button><button data-act="del">삭제</button></div></div></div>`;
     });
     el.innerHTML=html+'</div>';
-    el.querySelectorAll('.del').forEach(b=>b.onclick=async()=>{
-      const e=d.entries[b.dataset.i];
-      if(!confirm(`"${e.memo||e.cat}" ${won(e.amount)}원을 시트에서 지울까요?`))return;
-      try{await call('deleteEntry',e.id,e.amount);toast('지웠어요');S.cache={};await loadMonth(S.month,true);renderList()}catch(err){toast(err.message)}
+    el.querySelectorAll('.row').forEach(row=>{
+      const i=Number(row.dataset.i);let timer=null,sx=0,sy=0,fired=false;
+      const cancel=()=>{clearTimeout(timer);timer=null};
+      row.addEventListener('pointerdown',ev=>{fired=false;sx=ev.clientX;sy=ev.clientY;cancel();
+        timer=setTimeout(()=>{fired=true;try{navigator.vibrate&&navigator.vibrate(15)}catch(_){}
+          if(!S.selMode){S.selMode=true;S.sel=new Set([i])}else toggleSel(i,true);updateSel()},450)});
+      row.addEventListener('pointermove',ev=>{if(timer&&Math.hypot(ev.clientX-sx,ev.clientY-sy)>10)cancel()});
+      ['pointerup','pointercancel','pointerleave'].forEach(t=>row.addEventListener(t,cancel));
+      row.addEventListener('contextmenu',ev=>ev.preventDefault());
+      row.addEventListener('click',ev=>{
+        if(fired){fired=false;return}
+        const act=ev.target.closest('[data-act]');
+        if(S.selMode){toggleSel(i);updateSel();return}
+        if(act&&act.dataset.act==='edit')openEdit(d.entries[i]);
+        else if(act&&act.dataset.act==='del')askDelete([i]);
+      });
     });
+    updateSel();
   }catch(e){el.innerHTML=`<div class="muted">${esc(e.message)}</div>`}
+}
+function toggleSel(i,on){if(on===true||!S.sel.has(i))S.sel.add(i);else S.sel.delete(i);if(!S.sel.size)S.selMode=false}
+function updateSel(){
+  const card=$('listCard');if(card)card.classList.toggle('selmode',S.selMode);
+  document.querySelectorAll('#v-list .row').forEach(r=>{const on=S.sel.has(Number(r.dataset.i));r.classList.toggle('on',on);r.querySelector('.ck').textContent=on?'✓':''});
+  $('selbar').hidden=!(S.selMode&&S.view==='list');
+  if(S.selMode&&S.listData){const es=[...S.sel].map(i=>S.listData.entries[i]);
+    const ex=es.filter(e=>e.kind==='expense').reduce((s,e)=>s+e.amount,0),inc=es.filter(e=>e.kind==='income').reduce((s,e)=>s+e.amount,0);
+    $('selN').textContent=S.sel.size+'개 선택';$('selSum').textContent=[ex?'지출 '+won(ex):'',inc?'수입 '+won(inc):''].filter(Boolean).join(' · ')}
+}
+function selAll(){const n=S.listData.entries.length;S.sel=S.sel.size===n?new Set():new Set([...Array(n).keys()]);S.selMode=S.sel.size>0;updateSel()}
+function exitSel(){S.selMode=false;S.sel=new Set();updateSel()}
+
+// 바텀시트
+function openSheet(html){$('bsBody').innerHTML=html;$('bs').hidden=false;document.body.style.overflow='hidden'}
+function closeSheet(){$('bs').hidden=true;$('bsBody').innerHTML='';document.body.style.overflow=''}
+
+// 삭제 확인
+function askDelete(idx){
+  const es=idx.map(i=>S.listData.entries[i]);if(!es.length)return;
+  const show=es.slice(0,5),more=es.length-show.length;
+  openSheet(`<div class="bs-title">${es.length===1?'이 내역을 삭제할까요?':es.length+'건을 삭제할까요?'}</div>
+    <div class="bs-sub">시트에서도 지워지고 되돌릴 수 없어요.</div>
+    <div class="bs-list">${show.map(entryLine).join('')}${more?`<div class="mini"><span>외 ${more}건</span><span></span></div>`:''}</div>
+    <div class="bs-btns"><button class="no" onclick="closeSheet()">취소</button><button class="danger" id="bsYes">${es.length===1?'삭제':es.length+'건 삭제'}</button></div>`);
+  $('bsYes').onclick=async()=>{
+    const b=$('bsYes');b.disabled=true;b.textContent='삭제 중…';
+    try{const r=await call('deleteEntries',es.map(e=>({id:e.id,amount:e.amount})));closeSheet();exitSel();toast(`${r.count}건 삭제했어요`);S.cache={};await loadMonth(S.month,true);renderList()}
+    catch(err){b.disabled=false;b.textContent='다시 시도';toast(err.message)}
+  };
+}
+
+// 수정 바텀시트 (입력 화면과 같은 구성)
+let E=null;
+function openEdit(e){
+  E={orig:e,kind:e.kind,cat:e.cat,sub:e.sub,pay:e.pay,owner:e.pay?ownerOf(e.pay):''};
+  openSheet(`<div class="bs-title">내역 수정</div>
+    <div class="seg" style="margin-top:10px"><button id="ed-k-expense">지출</button><button id="ed-k-income">수입</button></div>
+    <div class="amount"><input id="ed-amt" inputmode="numeric" value="${won(e.amount)}" autocomplete="off"><span>원</span></div>
+    <label>분류</label><div class="grid" id="ed-cats"></div>
+    <div id="ed-subWrap" hidden><label>세부 항목</label><div class="chips" id="ed-subs"></div></div>
+    <div id="ed-payWrap"><label id="ed-payLabel">결제수단</label><div class="owners" id="ed-owners"></div><select id="ed-paySel" hidden></select></div>
+    <label>내용</label><input type="text" id="ed-memo" value="${esc(e.memo)}">
+    <label>날짜</label><input type="date" id="ed-date" value="${e.date||today()}">
+    <div class="bs-btns"><button class="no" onclick="closeSheet()">취소</button><button class="yes" id="ed-save">저장</button></div>`);
+  $('ed-k-expense').onclick=()=>{if(E.kind!=='expense'){E.kind='expense';E.cat='';E.sub='';E.pay='';E.owner='';renderEdit()}};
+  $('ed-k-income').onclick=()=>{if(E.kind!=='income'){E.kind='income';E.cat='';E.sub='';E.pay='';E.owner='';renderEdit()}};
+  $('ed-amt').addEventListener('input',ev=>{const n=ev.target.value.replace(/[^\d]/g,'');ev.target.value=n?Number(n).toLocaleString('ko-KR'):''});
+  $('ed-save').onclick=saveEdit;
+  renderEdit();
+}
+const withCur=(list,v)=>v&&!list.includes(v)?[v,...list]:list;   // 목록에 없는 예전 값도 보이게
+function renderEdit(){
+  $('ed-k-expense').classList.toggle('on',E.kind==='expense');$('ed-k-income').classList.toggle('on',E.kind==='income');
+  tiles($('ed-cats'),withCur(S.boot.cats[E.kind]||[],E.cat),E.cat,v=>{E.cat=v;E.sub='';renderEdit()});
+  const subs=withCur(S.boot.subs[E.cat]||[],E.sub);$('ed-subWrap').hidden=!subs.length;
+  chips($('ed-subs'),subs,E.sub,v=>{E.sub=v;renderEdit()});
+  renderEditPay();
+}
+function renderEditPay(open){
+  const pays=withCur(S.boot.pays[E.kind]||[],E.pay);
+  $('ed-payWrap').hidden=!pays.length;$('ed-payLabel').textContent=E.kind==='income'?'받은 곳':'결제수단';
+  const owners=[...new Set(pays.map(ownerOf))],ob=$('ed-owners');
+  ob.innerHTML=owners.map(o=>`<button class="${o===E.owner?'on':''}">${esc(o)}</button>`).join('');
+  [...ob.children].forEach((btn,i)=>btn.onclick=()=>{const o=owners[i];if(o===E.owner)return;E.owner=o;
+    const mine=pays.filter(p=>ownerOf(p)===o);E.pay=mine.length===1?mine[0]:'';renderEditPay(!E.pay)});
+  const sel=$('ed-paySel'),mine=pays.filter(p=>ownerOf(p)===E.owner);sel.hidden=!E.owner;
+  sel.innerHTML=(E.pay?'':'<option value="">선택하세요</option>')+mine.map(p=>`<option value="${esc(p)}"${p===E.pay?' selected':''}>${esc(methodOf(p))}</option>`).join('');
+  sel.onchange=()=>{E.pay=sel.value;renderEditPay()};
+  if(open&&!sel.hidden){sel.focus();try{sel.showPicker()}catch(_){}}
+}
+async function saveEdit(){
+  const amount=Number($('ed-amt').value.replace(/[^\d]/g,''));
+  if(!amount){toast('금액을 입력해 주세요');return}
+  if(!E.cat){toast('분류를 골라 주세요');return}
+  const o=E.orig,date=$('ed-date').value||o.date;
+  const ne={kind:E.kind,amount,cat:E.cat,sub:E.sub,memo:$('ed-memo').value.trim(),pay:E.pay,date};
+  const b=$('ed-save');b.disabled=true;b.textContent='저장 중…';
+  try{
+    const r=await call('updateEntry',o.id,o.amount,ne);
+    closeSheet();S.cache={};
+    toast(r.moved?`${r.sheet}(으)로 옮겨 저장했어요`:'수정했어요');
+    await loadMonth(S.month,true);renderList();
+  }catch(err){b.disabled=false;b.textContent='저장';toast(err.message)}
 }
 async function renderYear(){
   const el=$('v-year');el.innerHTML='<div class="muted">불러오는 중… (12개월 계산)</div>';
