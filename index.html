@@ -245,11 +245,10 @@ async function call(fn,...args){
   if(!j.ok)throw new Error(j.error||'오류가 났어요');
   return j.data;
 }
-// 설치 링크(#key=…)로 열면 키를 저장하고 주소창에서 지움
+// 링크(#…)에 비밀 키가 있어도 저장하지 않음: 키는 시작 화면에서 직접 입력해야 함
 function takeHash(){
   const p=new URLSearchParams(location.hash.slice(1));
-  const got=!!(p.get('key')||p.get('api'));
-  if(p.get('key'))store.set('key',p.get('key'));
+  const got=!!p.get('api');
   if(p.get('api'))store.set('api',p.get('api'));
   if(location.hash)history.replaceState(null,'',location.pathname+location.search);
   return got;
