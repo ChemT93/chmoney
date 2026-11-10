@@ -39,7 +39,7 @@ label{display:block;font-size:13px;color:var(--sub);margin:12px 0 6px}
 .owners button{border:1px solid var(--line);background:var(--chip);color:var(--ink);border-radius:12px;padding:12px 0;font-size:15px;font-weight:600}
 .owners button.on{background:var(--acc);border-color:var(--acc);color:#fff}
 select{width:100%;margin-top:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;padding:12px;font-size:16px}
-input[type=text],input[type=date]{width:100%;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;padding:11px;font-size:16px}
+input[type=text],input[type=date],input[type=password]{width:100%;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;padding:11px;font-size:16px}
 .primary{width:100%;border:0;border-radius:12px;padding:15px;font-size:17px;font-weight:700;color:#fff;background:var(--acc);margin-top:18px}
 .primary:disabled{opacity:.5}
 .stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
@@ -61,6 +61,13 @@ nav button.on{color:var(--acc);font-weight:700}
 .gear{border:0;background:var(--chip);color:var(--ink);border-radius:8px;width:34px;height:34px;font-size:17px}
 .keybox p{color:var(--sub);font-size:14px;margin:0 0 10px}
 .ghost{width:100%;border:1px solid var(--line);background:none;color:var(--ink);border-radius:12px;padding:13px;font-size:15px;margin-top:10px}
+#splash{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center}
+#splash img{width:96px;height:96px;border-radius:22px;margin-bottom:16px}
+#splash h2{margin:0 0 6px;font-size:22px}
+#spMsg{color:var(--sub);font-size:14px;margin:0 0 18px;min-height:20px;white-space:pre-line}
+#spMsg.bad{color:var(--exp)}
+#spForm{width:100%;max-width:320px}
+#spForm input{text-align:center;font-size:18px;letter-spacing:1px}
 .toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#333;color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;transition:.25s;pointer-events:none;max-width:90%}
 .toast.show{opacity:1}
 .muted{color:var(--sub);font-size:14px;text-align:center;padding:24px 0}
@@ -69,13 +76,22 @@ svg text{fill:var(--sub);font-size:11px}
 </style>
 </head>
 <body>
+<div id="splash">
+  <img src="icon-192.png" alt="">
+  <h2>우리집 가계부</h2>
+  <p id="spMsg">불러오는 중…</p>
+  <form id="spForm" hidden onsubmit="spSubmit();return false">
+    <input type="password" id="spKey" placeholder="비밀 키" autocomplete="current-password" enterkeyhint="go">
+    <button class="primary" type="submit">시작하기</button>
+  </form>
+</div>
 <header><h1 id="title">가계부</h1><div class="hd-r"><div class="mnav" id="mnav" hidden><button onclick="moveMonth(-1)">‹</button><span id="mlabel"></span><button onclick="moveMonth(1)">›</button></div><button class="gear" id="gear" onclick="showKey(true)" aria-label="설정">⚙</button></div></header>
 <main>
   <section id="v-key" hidden>
     <div class="card keybox">
-      <p>처음 한 번만 비밀 키를 입력하면, 이 휴대폰에서는 다음부터 자동으로 열려요.</p>
+      <p>키가 바뀌었을 때만 새 키를 입력하세요. 확인되면 이 휴대폰에서는 다시 묻지 않아요.</p>
       <input type="password" id="keyIn" placeholder="비밀 키" autocomplete="off">
-      <button class="primary" onclick="saveKey()">확인</button>
+      <button class="primary" onclick="saveKey()">새 키로 바꾸기</button>
       <button class="ghost" id="keyCancel" onclick="hideKey()">닫기</button>
       <button class="ghost" id="keyClear" onclick="clearKey()">이 휴대폰에서 키 지우기</button>
     </div>
@@ -121,13 +137,13 @@ const API_URL='__API_URL__';
 const apiUrl=()=>API_URL.startsWith('https://')?API_URL:(store.get('api')||'');
 async function call(fn,...args){
   const key=store.get('key');
-  if(!key){showKey(false);throw new Error('비밀 키를 입력해 주세요')}
+  if(!key){const e=new Error('비밀 키를 입력해 주세요');e.auth=true;throw e}
   if(!apiUrl())throw new Error('서버 주소가 아직 설정되지 않았어요');
   let res;
   try{res=await fetch(apiUrl(),{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({key,fn,args})})}
   catch(e){throw new Error('서버에 연결하지 못했어요. 인터넷 연결과, Apps Script 배포 설정(실행: 나 / 액세스: 모든 사용자)을 확인해 주세요.')}
   let j;try{j=await res.json()}catch(e){throw new Error('서버 응답을 읽지 못했어요. Apps Script를 새 버전으로 다시 배포했는지 확인해 주세요.')}
-  if(j.code===401){store.del('key');showKey(false);throw new Error(j.error)}
+  if(j.code===401){const e=new Error(j.error);e.auth=true;throw e}
   if(!j.ok)throw new Error(j.error||'오류가 났어요');
   return j.data;
 }
@@ -141,15 +157,26 @@ function takeHash(){
   return got;
 }
 takeHash();
-addEventListener('hashchange',()=>{if(takeHash()){$('v-key').hidden=true;boot()}});
+addEventListener('hashchange',()=>{if(takeHash()){store.del('ok');$('v-key').hidden=true;boot()}});
+// 시작 화면: 확인된 키가 있으면 로고만 잠깐, 없으면 키 입력
+function splashLoading(){$('splash').hidden=false;$('spForm').hidden=true;$('spMsg').className='';$('spMsg').textContent='불러오는 중…'}
+function splashAsk(msg,bad){
+  $('splash').hidden=false;$('spForm').hidden=false;
+  $('spMsg').className=bad?'bad':'';$('spMsg').textContent=msg||'처음 한 번만 비밀 키를 입력해 주세요.\n확인되면 이 휴대폰에서는 다시 묻지 않아요.';
+  $('spKey').value=store.get('key')||'';setTimeout(()=>$('spKey').focus(),50);
+}
+async function spSubmit(){
+  const v=$('spKey').value.trim();if(!v){$('spMsg').className='bad';$('spMsg').textContent='키를 입력해 주세요';return}
+  store.set('key',v);store.del('ok');await boot();
+}
 function showKey(fromGear){
   ['add','sum','list','year','err'].forEach(x=>$('v-'+x).hidden=true);
   $('v-key').hidden=false;$('mnav').hidden=true;$('title').textContent=fromGear?'설정':'비밀 키';
   const has=!!store.get('key');$('keyCancel').hidden=!has;$('keyClear').hidden=!has;$('keyIn').value='';
 }
 function hideKey(){$('v-key').hidden=true;if(S.boot)go(S.view||'add');else boot()}
-async function saveKey(){const v=$('keyIn').value.trim();if(!v){toast('키를 입력해 주세요');return}store.set('key',v);$('v-key').hidden=true;await boot()}
-function clearKey(){if(!confirm('이 휴대폰에서 키를 지울까요? 다시 입력해야 앱을 쓸 수 있어요.'))return;store.del('key');showKey(false)}
+async function saveKey(){const v=$('keyIn').value.trim();if(!v){toast('키를 입력해 주세요');return}store.set('key',v);store.del('ok');$('v-key').hidden=true;await boot()}
+function clearKey(){if(!confirm('이 휴대폰에서 키를 지울까요? 다시 입력해야 앱을 쓸 수 있어요.'))return;store.del('key');store.del('ok');S.boot=null;$('v-key').hidden=true;splashAsk()}
 function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),2200)}
 function today(){const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10)}
 
@@ -288,15 +315,24 @@ function showErr(msg){
 }
 async function boot(){
   $('date').value=today();$('v-err').hidden=true;
+  if(!store.get('key')){splashAsk();return}
+  splashLoading();
   try{
     S.boot=await call('getBootstrap');
+    store.set('ok','1');                       // 이 기기는 확인됨 → 키가 바뀌기 전까지 다시 묻지 않음
     if(!S.boot.ok){toast('월별 탭을 찾지 못했어요');}
     S.month=S.boot.currentMonth;
     setKind('expense');
+    $('splash').hidden=true;
     go('add');
-  }catch(e){S.err=e.message||'불러오기 실패';if(!$('v-key').hidden)return;showErr(S.err)}
+  }catch(e){
+    S.err=e.message||'불러오기 실패';
+    if(e.auth){const was=store.get('ok');store.del('key');store.del('ok');splashAsk(was?'비밀 키가 바뀌었어요. 새 키를 입력해 주세요.':S.err,true);return}
+    if(store.get('ok')){$('splash').hidden=true;showErr(S.err);return}   // 확인된 기기: 키는 묻지 않고 연결 문제만 안내
+    splashAsk(S.err,true);
+  }
 }
-if(!S.boot&&!store.get('key'))showKey(false);else boot();
+boot();
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 </body>
