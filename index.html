@@ -64,8 +64,6 @@ details.cat summary::-webkit-details-marker{display:none}
 details.cat[open] summary{color:var(--acc)}
 .mini{display:flex;justify-content:space-between;gap:10px;padding:7px 0;font-size:14px;font-variant-numeric:tabular-nums}
 details.cat .mini{padding:5px 0 5px 36px;color:var(--sub)}details.cat .mini:last-child{padding-bottom:10px}
-.stack{display:flex;height:14px;border-radius:7px;overflow:hidden;margin-bottom:6px;gap:2px}.stack i{display:block;height:100%}
-.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px}
 .rank{display:inline-block;width:20px;color:var(--sub)}
 .bar{display:grid;grid-template-columns:80px 1fr auto;gap:8px;align-items:center;margin:8px 0;font-size:14px}
 .bar i{display:block;height:10px;border-radius:5px;background:var(--exp);opacity:.8}
@@ -280,7 +278,6 @@ async function go(v){
   if(v==='list')renderList();
   if(v==='year')renderYear();
 }
-const WHO_COLOR={정훈:'#4a86c5',채은:'#d0679a',같이:'#3fa37a'};
 const sec=t=>`<div class="sec">${t}</div>`;
 // 이번 달 탭: [시트 요약 | 분석]
 function renderSum(){
@@ -337,13 +334,6 @@ async function renderAnalysis(el){
       const list=exps.filter(e=>(e.cat||'미분류')===k).sort((a,b)=>b.amount-a.amount);
       return `<details class="cat"><summary><span class="ce">${EMOJI[k]||'🏷️'}</span><span class="cn">${esc(k)}</span><span class="cb"><i style="width:${Math.max(3,v/max*100)}%"></i></span><span class="cv"><b>${won(v)}</b><small>${Math.round(v/d.expense*100)}% · ${list.length}건</small></span></summary>
         ${list.map(e=>`<div class="mini"><span>${e.date?Number(e.date.slice(8))+'일 ':''}${esc(e.memo||e.sub||'-')}</span><span>${won(e.amount)}</span></div>`).join('')}</details>`}).join('')||'<div class="muted">아직 지출이 없어요</div>'}</div>`;
-    // 3. 누가 썼나
-    const who={};exps.forEach(e=>{const w=e.pay?ownerOf(e.pay):'기타';who[w]=(who[w]||0)+e.amount});
-    const ws=Object.entries(who).sort((a,b)=>b[1]-a[1]);
-    if(ws.length){
-      html+=`<div class="card">${sec('누가 썼나')}<div class="stack">${ws.map(([k,v])=>`<i style="width:${v/d.expense*100}%;background:${WHO_COLOR[k]||'#8e8e93'}"></i>`).join('')}</div>
-        ${ws.map(([k,v])=>`<div class="mini"><span><i class="dot" style="background:${WHO_COLOR[k]||'#8e8e93'}"></i>${esc(k)}</span><span><b>${won(v)}</b> <small>${Math.round(v/d.expense*100)}%</small></span></div>`).join('')}</div>`;
-    }
     // 4. 날짜별
     const byDay=Array(dim+1).fill(0);exps.forEach(e=>{if(e.date)byDay[Number(e.date.slice(8))]+=e.amount});
     const dmax=Math.max(1,...byDay),W=340,H=110,step=W/dim,bw=Math.max(3,step-3);
