@@ -92,7 +92,7 @@ details.cat .mini{padding:5px 0 5px 36px;color:var(--sub)}details.cat .mini:last
 .row{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line);-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;transition:background .15s}
 .row:last-child{border:0}.row .main{flex:1;min-width:0}.row .t{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.row .s{font-size:13px;color:var(--sub)}
 .row .a{font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums;text-align:right}
-.acts{display:flex;justify-content:flex-end;gap:2px;margin-top:2px}.acts button{border:0;background:none;color:var(--sub);font-size:13px;padding:4px 6px}.acts .ed{color:var(--acc)}
+.acts{display:flex;justify-content:flex-end;gap:6px;margin-top:6px}.acts button{border:1px solid currentColor;background:none;border-radius:7px;font-size:12px;font-weight:700;letter-spacing:.2px;padding:3px 0;width:42px;line-height:1.3}.acts .ed{color:var(--acc)}.acts .dl{color:var(--exp)}
 .ck{display:none;width:22px;height:22px;border-radius:50%;border:2px solid var(--line);flex:none;align-items:center;justify-content:center;font-size:13px;color:#fff}
 .selmode .ck{display:flex}.selmode .acts{display:none}
 .row.on{background:color-mix(in srgb,var(--acc) 14%,transparent);margin:0 -16px;padding-left:16px;padding-right:16px}.row.on .ck{background:var(--acc);border-color:var(--acc)}
@@ -528,13 +528,13 @@ async function renderList(){
   try{
     const d=await loadMonth(S.month);S.listData=d;
     if(!d.entries.length){exitSel();el.innerHTML='<div class="card muted">내역이 없어요</div>';return}
-    let html=`<div class="hint">길게 누른 채 위아래로 끌면 여러 개를 한 번에 선택해요</div><div class="card${S.selMode?' selmode':''}" id="listCard">`,last=null;
+    let html=`<div class="card${S.selMode?' selmode':''}" id="listCard">`,last=null;
     d.entries.forEach((e,i)=>{
       if(e.date!==last){last=e.date;html+=`<div class="day">${e.date?Number(e.date.slice(5,7))+'월 '+Number(e.date.slice(8))+'일':'날짜 없음'}</div>`}
       html+=`<div class="row${S.sel.has(i)?' on':''}" data-i="${i}"><span class="ck">${S.sel.has(i)?'✓':''}</span>
         <div class="main"><div class="t">${esc(e.memo||e.cat||'(내용 없음)')}</div><div class="s">${esc([e.cat,e.sub,e.pay].filter(Boolean).join(' · '))}</div></div>
         <div class="a"><div class="${e.kind==='income'?'inc':'exp'}">${e.kind==='income'?'+':'−'}${won(e.amount)}</div>
-        <div class="acts"><button class="ed" data-act="edit">수정</button><button data-act="del">삭제</button></div></div></div>`;
+        <div class="acts"><button class="ed" data-act="edit" aria-label="수정">Edit</button><button class="dl" data-act="del" aria-label="삭제">Del</button></div></div></div>`;
     });
     el.innerHTML=html+'</div>';
     el.querySelectorAll('.row').forEach(row=>{
