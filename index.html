@@ -15,7 +15,12 @@
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 -apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;padding-bottom:calc(72px + env(safe-area-inset-bottom))}
 header{position:sticky;top:0;background:var(--bg);padding:14px 16px 8px;z-index:5;display:flex;align-items:center;justify-content:space-between}
-h1{font-size:20px;margin:0}
+h1{font-size:20px;margin:0;white-space:nowrap}
+.hd-l{display:flex;align-items:center;gap:8px;min-width:0}
+.ybtn{border:1px solid var(--line);background:var(--chip);color:var(--ink);border-radius:999px;padding:5px 10px;font-size:13px;font-weight:700;white-space:nowrap}
+.ylist{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:6px 0 4px}
+.ylist button{border:1px solid var(--line);background:var(--chip);color:var(--ink);border-radius:12px;padding:16px 0;font-size:17px;font-weight:700}
+.ylist button.on{background:var(--acc);border-color:var(--acc);color:#fff}
 .mnav{display:flex;align-items:center;gap:6px}.mnav button{border:0;background:var(--chip);color:var(--ink);border-radius:8px;width:34px;height:34px;font-size:18px}
 .mnav span{min-width:56px;text-align:center;font-weight:600}
 main{padding:0 16px}
@@ -159,7 +164,7 @@ function applySplash(c){c=c||splashCfg();
   document.getElementById('spMsg').textContent=c.msg||SPLASH_DEF.msg;}
 applySplash();
 </script>
-<header><h1 id="title">가계부</h1><div class="hd-r"><div class="mnav" id="mnav" hidden><button onclick="moveMonth(-1)">‹</button><span id="mlabel"></span><button onclick="moveMonth(1)">›</button></div><button class="gear" id="gear" onclick="showKey(true)" aria-label="설정">⚙</button></div></header>
+<header><div class="hd-l"><h1 id="title">가계부</h1><button class="ybtn" id="yearBtn" hidden onclick="pickYear()"></button></div><div class="hd-r"><div class="mnav" id="mnav" hidden><button onclick="moveMonth(-1)">‹</button><span id="mlabel"></span><button onclick="moveMonth(1)">›</button></div><button class="gear" id="gear" onclick="showKey(true)" aria-label="설정">⚙</button></div></header>
 <main>
   <section id="v-key" hidden>
     <div class="card">
@@ -352,7 +357,7 @@ async function save(){
 
 async function loadMonth(m,force){
   if(!force&&S.cache[m])return S.cache[m];
-  return S.cache[m]=await call('getMonth',m);
+  return S.cache[m]=await call('getMonth',m,S.boot.year);
 }
 function moveMonth(d){const ms=S.boot.months;const i=ms.indexOf(S.month)+d;if(i<0||i>=ms.length)return;S.month=ms[i];go(S.view)}
 
@@ -364,7 +369,8 @@ async function go(v){
   ['add','sum','list','year'].forEach(x=>$('v-'+x).hidden=x!==v);
   $('mnav').hidden=!(v==='sum'||v==='list');
   $('mlabel').textContent=S.month+'월';
-  $('title').textContent={add:'빠른 입력',sum:'요약',list:'내역',year:(S.boot?S.boot.year+'년':'연간')}[v];
+  $('title').textContent={add:'빠른 입력',sum:'요약',list:'내역',year:'연간'}[v];
+  $('yearBtn').hidden=v==='add';$('yearBtn').textContent=S.boot.year+'년 ▾';
   if(v==='sum')renderSum();
   if(v==='list')renderList();
   if(v==='year')renderYear();
@@ -378,7 +384,24 @@ function renderSum(){
   el.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{store.set('sumMode',b.dataset.m);renderSum()});
   ({vis:renderVisual,sheet:renderSheet,ana:renderAnalysis})[mode]($('sumBody'));
 }
-async function getSummary(m){const k='s'+m;return S.cache[k]||(S.cache[k]=await call('getSummary',m))}
+async function getSummary(m){const k='s'+m;return S.cache[k]||(S.cache[k]=await call('getSummary',m,S.boot.year))}
+// 연도 바꾸기: 고른 해의 스프레드시트를 봄 (입력·수정은 날짜의 연도로 자동 저장)
+function pickYear(){
+  const ys=S.boot.years||[S.boot.year];
+  openSheet(`<div class="bs-title">연도 선택</div><div class="bs-sub">고른 해의 스프레드시트를 보여줘요. 입력한 내역은 날짜에 맞는 해에 저장돼요.</div>
+    <div class="ylist">${ys.map(y=>`<button data-y="${y}" class="${y===S.boot.year?'on':''}">${y}</button>`).join('')}</div>
+    ${ys.length<2?'<div class="bs-sub" style="margin-top:10px">다른 해의 스프레드시트를 Code.gs의 CONFIG.SHEETS에 추가하면 여기에 나와요.</div>':''}`);
+  document.querySelectorAll('.ylist button').forEach(b=>b.onclick=()=>{closeSheet();switchYear(Number(b.dataset.y))});
+}
+async function switchYear(y){
+  if(y===S.boot.year)return;
+  const prev=S.boot;$('yearBtn').textContent=y+'년 …';
+  try{
+    S.boot=await call('getBootstrap',y);
+    store.set('year',String(y));S.cache={};exitSel();S.month=S.boot.currentMonth;
+    setKind(S.kind);go(S.view);toast(y+'년 가계부');
+  }catch(e){S.boot=prev;$('yearBtn').textContent=prev.year+'년 ▾';toast(e.message)}
+}
 // 시트 왼쪽 요약표를 보이는 그대로 (칸 합치기·머리글 색·굵게·▲▼ 색 반영)
 const lum=hex=>{const m=/^#?([0-9a-f]{6})$/i.exec(hex||'');if(!m)return 1;const n=parseInt(m[1],16);return((n>>16&255)*.299+(n>>8&255)*.587+(n&255)*.114)/255};
 async function renderSheet(el){
@@ -671,7 +694,7 @@ async function saveEdit(){
 async function renderYear(){
   const el=$('v-year');el.innerHTML='<div class="muted">불러오는 중… (12개월 계산)</div>';
   try{
-    const y=S.cache.year||(S.cache.year=await call('getYear'));
+    const y=S.cache.year||(S.cache.year=await call('getYear',S.boot.year));
     const max=Math.max(1,...y.map(m=>Math.max(m.income,m.expense)));
     const W=340,H=180,bw=10,step=W/12;
     const bars=y.map((m,i)=>{const x=i*step+4;const hi=m.income/max*(H-24),he=m.expense/max*(H-24);
@@ -696,7 +719,9 @@ async function boot(){
   if(!store.get('key')){splashAsk();return}
   splashLoading();
   try{
-    S.boot=await call('getBootstrap');
+    const sy=Number(store.get('year'))||null;
+    try{S.boot=await call('getBootstrap',sy)}
+    catch(e){if(sy&&!e.auth&&/연결되어 있지 않아요|열지 못했어요/.test(e.message)){store.del('year');S.boot=await call('getBootstrap',null)}else throw e}
     store.set('ok','1');                       // 이 기기는 확인됨 → 키가 바뀌기 전까지 다시 묻지 않음
     if(!S.boot.ok){toast('월별 탭을 찾지 못했어요');}
     S.month=S.boot.currentMonth;
