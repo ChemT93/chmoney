@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>우리집 가계부</title>
+<meta name="theme-color" content="#141414">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<style>
+:root{--bg:#f6f5f2;--card:#fff;--ink:#1d1d1f;--sub:#6e6e73;--line:#e6e4df;--exp:#d9534f;--inc:#2f7d5b;--acc:#2f5d8a;--chip:#efede8}
+@media (prefers-color-scheme:dark){:root{--bg:#141414;--card:#1f1f21;--ink:#f2f2f2;--sub:#a0a0a6;--line:#2e2e31;--exp:#ff7b72;--inc:#5fcf9a;--acc:#7fb0e0;--chip:#2a2a2d}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 -apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;padding-bottom:calc(72px + env(safe-area-inset-bottom))}
+header{position:sticky;top:0;background:var(--bg);padding:14px 16px 8px;z-index:5;display:flex;align-items:center;justify-content:space-between}
+h1{font-size:20px;margin:0}
+.mnav{display:flex;align-items:center;gap:6px}.mnav button{border:0;background:var(--chip);color:var(--ink);border-radius:8px;width:34px;height:34px;font-size:18px}
+.mnav span{min-width:56px;text-align:center;font-weight:600}
+main{padding:0 16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px}
+.seg{display:grid;grid-template-columns:1fr 1fr;background:var(--chip);border-radius:10px;padding:3px;margin-bottom:14px}
+.seg button{border:0;background:none;padding:10px;border-radius:8px;font-size:16px;color:var(--sub);font-weight:600}
+.seg button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.amount{display:flex;align-items:baseline;gap:6px;border-bottom:2px solid var(--line);margin-bottom:14px}
+.amount input{flex:1;border:0;background:none;color:var(--ink);font-size:32px;font-weight:700;padding:6px 0;min-width:0;outline:none}
+.amount span{color:var(--sub);font-size:18px}
+label{display:block;font-size:13px;color:var(--sub);margin:12px 0 6px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips button{border:1px solid var(--line);background:var(--chip);color:var(--ink);border-radius:999px;padding:7px 12px;font-size:14px}
+.chips button.on{background:var(--acc);border-color:var(--acc);color:#fff}
+[hidden]{display:none!important}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.grid button{border:1px solid var(--line);background:var(--chip);color:var(--ink);border-radius:14px;height:74px;padding:6px 2px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:12.5px;white-space:nowrap;overflow:hidden}
+.grid button .e{font-size:26px;line-height:1;height:30px;display:flex;align-items:center;justify-content:center}.grid button .e svg{display:block}
+.grid button.on{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:700}
+.owners{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:8px}
+.owners button{border:1px solid var(--line);background:var(--chip);color:var(--ink);border-radius:12px;padding:12px 0;font-size:15px;font-weight:600}
+.owners button.on{background:var(--acc);border-color:var(--acc);color:#fff}
+select{width:100%;margin-top:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;padding:12px;font-size:16px}
+input[type=text],input[type=date]{width:100%;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;padding:11px;font-size:16px}
+.primary{width:100%;border:0;border-radius:12px;padding:15px;font-size:17px;font-weight:700;color:#fff;background:var(--acc);margin-top:18px}
+.primary:disabled{opacity:.5}
+.stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.stat .k{font-size:12px;color:var(--sub)}.stat .v{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums}
+.inc{color:var(--inc)}.exp{color:var(--exp)}
+.bar{display:grid;grid-template-columns:80px 1fr auto;gap:8px;align-items:center;margin:8px 0;font-size:14px}
+.bar i{display:block;height:10px;border-radius:5px;background:var(--exp);opacity:.8}
+.bar b{font-weight:600;font-variant-numeric:tabular-nums}
+.item{display:flex;justify-content:space-between;gap:10px;padding:12px 0;border-bottom:1px solid var(--line)}
+.item:last-child{border:0}.item .t{font-weight:600}.item .s{font-size:13px;color:var(--sub)}
+.item .a{font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums;text-align:right}
+.item .del{border:0;background:none;color:var(--sub);font-size:13px;padding:2px 0}
+.day{font-size:13px;color:var(--sub);margin:14px 0 2px}
+nav{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(4,1fr);padding-bottom:env(safe-area-inset-bottom)}
+nav button{border:0;background:none;color:var(--sub);padding:10px 0 12px;font-size:12px}
+nav button b{display:block;font-size:20px;line-height:1.2}
+nav button.on{color:var(--acc);font-weight:700}
+.hd-r{display:flex;align-items:center;gap:8px}
+.gear{border:0;background:var(--chip);color:var(--ink);border-radius:8px;width:34px;height:34px;font-size:17px}
+.keybox p{color:var(--sub);font-size:14px;margin:0 0 10px}
+.ghost{width:100%;border:1px solid var(--line);background:none;color:var(--ink);border-radius:12px;padding:13px;font-size:15px;margin-top:10px}
+.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#333;color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;transition:.25s;pointer-events:none;max-width:90%}
+.toast.show{opacity:1}
+.muted{color:var(--sub);font-size:14px;text-align:center;padding:24px 0}
+svg text{fill:var(--sub);font-size:11px}
+.legend{display:flex;gap:14px;font-size:13px;color:var(--sub);margin-top:8px}.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:middle}
+</style>
+</head>
+<body>
+<header><h1 id="title">가계부</h1><div class="hd-r"><div class="mnav" id="mnav" hidden><button onclick="moveMonth(-1)">‹</button><span id="mlabel"></span><button onclick="moveMonth(1)">›</button></div><button class="gear" id="gear" onclick="showKey(true)" aria-label="설정">⚙</button></div></header>
+<main>
+  <section id="v-key" hidden>
+    <div class="card keybox">
+      <p>처음 한 번만 비밀 키를 입력하면, 이 휴대폰에서는 다음부터 자동으로 열려요.</p>
+      <input type="password" id="keyIn" placeholder="비밀 키" autocomplete="off">
+      <button class="primary" onclick="saveKey()">확인</button>
+      <button class="ghost" id="keyCancel" onclick="hideKey()">닫기</button>
+      <button class="ghost" id="keyClear" onclick="clearKey()">이 휴대폰에서 키 지우기</button>
+    </div>
+  </section>
+  <section id="v-add">
+    <div class="card">
+      <div class="seg"><button id="k-expense" class="on" onclick="setKind('expense')">지출</button><button id="k-income" onclick="setKind('income')">수입</button></div>
+      <div class="amount"><input id="amt" inputmode="numeric" placeholder="0" autocomplete="off"><span>원</span></div>
+      <label>분류</label><div class="grid" id="cats"></div>
+      <div id="subWrap" hidden><label>세부 항목</label><div class="chips" id="subs"></div></div>
+      <div id="payWrap"><label id="payLabel">결제수단</label><div class="owners" id="owners"></div><select id="paySel" hidden></select></div>
+      <label>내용</label><input type="text" id="memo" placeholder="예: 마트 장보기">
+      <label>날짜</label><input type="date" id="date">
+      <button class="primary" id="save" onclick="save()">저장</button>
+    </div>
+  </section>
+  <section id="v-sum" hidden></section>
+  <section id="v-list" hidden></section>
+  <section id="v-year" hidden></section>
+</main>
+<nav>
+  <button class="on" data-v="add" onclick="go('add')"><b>＋</b>입력</button>
+  <button data-v="sum" onclick="go('sum')"><b>◔</b>이번 달</button>
+  <button data-v="list" onclick="go('list')"><b>≡</b>내역</button>
+  <button data-v="year" onclick="go('year')"><b>▥</b>연간</button>
+</nav>
+<div class="toast" id="toast"></div>
+<script>
+const S={kind:'expense',cat:'',sub:'',pay:'',boot:null,month:null,cache:{},view:'add'};
+const $=id=>document.getElementById(id);
+const won=n=>Math.round(n).toLocaleString('ko-KR');
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
+// 시트와 연결된 Apps Script 웹앱 주소 (비밀 아님)
+const API_URL='__API_URL__';
+const apiUrl=()=>API_URL.startsWith('https://')?API_URL:(store.get('api')||'');
+async function call(fn,...args){
+  const key=store.get('key');
+  if(!key){showKey(false);throw new Error('비밀 키를 입력해 주세요')}
+  if(!apiUrl())throw new Error('서버 주소가 아직 설정되지 않았어요');
+  let res;
+  try{res=await fetch(apiUrl(),{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({key,fn,args})})}
+  catch(e){throw new Error('인터넷 연결을 확인해 주세요')}
+  let j;try{j=await res.json()}catch(e){throw new Error('서버 응답을 읽지 못했어요')}
+  if(j.code===401){store.del('key');showKey(false);throw new Error(j.error)}
+  if(!j.ok)throw new Error(j.error||'오류가 났어요');
+  return j.data;
+}
+// 설치 링크(#key=…)로 열면 키를 저장하고 주소창에서 지움
+function takeHash(){
+  const p=new URLSearchParams(location.hash.slice(1));
+  const got=!!(p.get('key')||p.get('api'));
+  if(p.get('key'))store.set('key',p.get('key'));
+  if(p.get('api'))store.set('api',p.get('api'));
+  if(location.hash)history.replaceState(null,'',location.pathname+location.search);
+  return got;
+}
+takeHash();
+addEventListener('hashchange',()=>{if(takeHash()){$('v-key').hidden=true;boot()}});
+function showKey(fromGear){
+  ['add','sum','list','year'].forEach(x=>$('v-'+x).hidden=true);
+  $('v-key').hidden=false;$('mnav').hidden=true;$('title').textContent=fromGear?'설정':'비밀 키';
+  const has=!!store.get('key');$('keyCancel').hidden=!has;$('keyClear').hidden=!has;$('keyIn').value='';
+}
+function hideKey(){$('v-key').hidden=true;go(S.view||'add')}
+async function saveKey(){const v=$('keyIn').value.trim();if(!v){toast('키를 입력해 주세요');return}store.set('key',v);$('v-key').hidden=true;await boot()}
+function clearKey(){if(!confirm('이 휴대폰에서 키를 지울까요? 다시 입력해야 앱을 쓸 수 있어요.'))return;store.del('key');showKey(false)}
+function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),2200)}
+function today(){const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10)}
+
+function chips(el,items,cur,onPick){
+  el.innerHTML=items.map(x=>`<button class="${x===cur?'on':''}">${esc(x)}</button>`).join('')||'<span class="muted" style="padding:0">항목 없음</span>';
+  [...el.children].forEach((b,i)=>b.onclick=()=>onPick(items[i]===cur?'':items[i]));
+}
+const EMOJI={저축:'🪙',부동산:'🏠',대출:'🏦',보험료:'🛡️',공과금:'💡',교통비:'🚗',식비:'🍚',생활비:'🛒',건강관리:'💊',문화생활:'🎬',안경렌즈:'👓',경조사:'💐',육아:'🍼',용돈:'💵',
+  급여:'💼',부수입:'💰',명절휴가비:'🎁',성과급:'🏆',연가보상비:'🌴',금융소득:'📈',연말정산:'🧾',비상금지원:'🆘',이월금:'🔁',비상금:'🧰'};
+function tiles(el,items,cur,onPick){
+  el.innerHTML=items.map(x=>`<button class="${x===cur?'on':''}"><span class="e">${EMOJI[x]||'🏷️'}</span><span>${esc(x)}</span></button>`).join('');
+  [...el.children].forEach((b,i)=>b.onclick=()=>onPick(items[i]===cur?'':items[i]));
+}
+// "정훈 현대신용" → 사람 "정훈", 수단 "현대신용"
+const ownerOf=p=>{const i=p.indexOf(' ');return i>0?p.slice(0,i):'기타'};
+const methodOf=p=>{const i=p.indexOf(' ');return i>0?p.slice(i+1):p};
+function renderForm(){
+  const b=S.boot;
+  tiles($('cats'),b.cats[S.kind],S.cat,v=>{S.cat=v;S.sub='';renderForm()});
+  const subs=(b.subs[S.cat]||[]);
+  $('subWrap').hidden=!subs.length;
+  chips($('subs'),subs,S.sub,v=>{S.sub=v;renderForm()});
+  renderPay();
+}
+function renderPay(open){
+  const pays=S.boot.pays[S.kind]||[];
+  $('payWrap').hidden=!pays.length;
+  $('payLabel').textContent=S.kind==='income'?'받은 곳':'결제수단';
+  const owners=[...new Set(pays.map(ownerOf))];
+  const ob=$('owners');
+  ob.innerHTML=owners.map(o=>`<button class="${o===S.owner?'on':''}">${esc(o)}</button>`).join('');
+  [...ob.children].forEach((btn,i)=>btn.onclick=()=>{
+    const o=owners[i];if(o===S.owner)return;
+    S.owner=o;
+    const mine=pays.filter(p=>ownerOf(p)===o);
+    const last=store.get('pay_'+S.kind+'_'+o);
+    S.pay=mine.length===1?mine[0]:(last&&mine.includes(last)?last:'');
+    renderPay(!S.pay);
+  });
+  const sel=$('paySel');
+  const mine=pays.filter(p=>ownerOf(p)===S.owner);
+  sel.hidden=!S.owner;
+  sel.innerHTML=(S.pay?'':'<option value="">선택하세요</option>')+mine.map(p=>`<option value="${esc(p)}"${p===S.pay?' selected':''}>${esc(methodOf(p))}</option>`).join('');
+  sel.onchange=()=>{S.pay=sel.value;if(S.pay){store.set('pay_'+S.kind,S.pay);store.set('pay_'+S.kind+'_'+S.owner,S.pay)}renderPay()};
+  if(open&&!sel.hidden){sel.focus();try{sel.showPicker()}catch(e){}}
+}
+function setKind(k){S.kind=k;S.cat='';S.sub='';const p=store.get('pay_'+k);S.pay=p&&(S.boot.pays[k]||[]).includes(p)?p:'';S.owner=S.pay?ownerOf(S.pay):'';$('k-expense').classList.toggle('on',k==='expense');$('k-income').classList.toggle('on',k==='income');$('save').style.background=k==='income'?'var(--inc)':'var(--acc)';renderForm()}
+$('amt').addEventListener('input',e=>{const n=e.target.value.replace(/[^\d]/g,'');e.target.value=n?Number(n).toLocaleString('ko-KR'):''});
+
+async function save(){
+  const amount=Number($('amt').value.replace(/[^\d]/g,''));
+  if(!amount){toast('금액을 입력해 주세요');$('amt').focus();return}
+  if(!S.cat){toast('분류를 골라 주세요');return}
+  const btn=$('save');btn.disabled=true;btn.textContent='저장 중…';
+  try{
+    const r=await call('addEntry',{kind:S.kind,amount,cat:S.cat,sub:S.sub,memo:$('memo').value.trim(),pay:S.pay,date:$('date').value||today()});
+    toast(`저장했어요 · ${r.sheet} ${r.row}행`);
+    $('amt').value='';$('memo').value='';S.sub='';renderForm();
+    S.cache={};
+  }catch(e){toast(e.message||'저장하지 못했어요')}
+  finally{btn.disabled=false;btn.textContent='저장'}
+}
+
+async function loadMonth(m,force){
+  if(!force&&S.cache[m])return S.cache[m];
+  return S.cache[m]=await call('getMonth',m);
+}
+function moveMonth(d){const ms=S.boot.months;const i=ms.indexOf(S.month)+d;if(i<0||i>=ms.length)return;S.month=ms[i];go(S.view)}
+
+async function go(v){
+  S.view=v;$('v-key').hidden=true;
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
+  ['add','sum','list','year'].forEach(x=>$('v-'+x).hidden=x!==v);
+  $('mnav').hidden=!(v==='sum'||v==='list');
+  $('mlabel').textContent=S.month+'월';
+  $('title').textContent={add:'빠른 입력',sum:'요약',list:'내역',year:(S.boot?S.boot.year+'년':'연간')}[v];
+  if(v==='sum')renderSum();
+  if(v==='list')renderList();
+  if(v==='year')renderYear();
+}
+async function renderSum(){
+  const el=$('v-sum');el.innerHTML='<div class="muted">불러오는 중…</div>';
+  try{
+    const d=await loadMonth(S.month);
+    const cats=Object.entries(d.byCat).sort((a,b)=>b[1]-a[1]);const max=cats.length?cats[0][1]:1;
+    el.innerHTML=`<div class="card"><div class="stats">
+      <div class="stat"><div class="k">수입</div><div class="v inc">${won(d.income)}</div></div>
+      <div class="stat"><div class="k">지출</div><div class="v exp">${won(d.expense)}</div></div>
+      <div class="stat"><div class="k">남은 돈</div><div class="v">${won(d.income-d.expense)}</div></div></div></div>
+      <div class="card"><div style="font-weight:700;margin-bottom:6px">분류별 지출</div>
+      ${cats.map(([k,v])=>`<div class="bar"><span>${esc(k)}</span><i style="width:${Math.max(3,v/max*100)}%"></i><b>${won(v)}</b></div>`).join('')||'<div class="muted">아직 지출이 없어요</div>'}</div>`;
+  }catch(e){el.innerHTML=`<div class="muted">${esc(e.message)}</div>`}
+}
+async function renderList(){
+  const el=$('v-list');el.innerHTML='<div class="muted">불러오는 중…</div>';
+  try{
+    const d=await loadMonth(S.month);
+    if(!d.entries.length){el.innerHTML='<div class="card muted">내역이 없어요</div>';return}
+    let html='<div class="card">',last=null;
+    d.entries.forEach((e,i)=>{
+      if(e.date!==last){last=e.date;html+=`<div class="day">${e.date?Number(e.date.slice(5,7))+'월 '+Number(e.date.slice(8))+'일':'날짜 없음'}</div>`}
+      html+=`<div class="item"><div><div class="t">${esc(e.memo||e.cat||'(내용 없음)')}</div><div class="s">${esc([e.cat,e.sub,e.pay].filter(Boolean).join(' · '))}</div></div>
+      <div class="a"><div class="${e.kind==='income'?'inc':'exp'}">${e.kind==='income'?'+':'−'}${won(e.amount)}</div><button class="del" data-i="${i}">삭제</button></div></div>`;
+    });
+    el.innerHTML=html+'</div>';
+    el.querySelectorAll('.del').forEach(b=>b.onclick=async()=>{
+      const e=d.entries[b.dataset.i];
+      if(!confirm(`"${e.memo||e.cat}" ${won(e.amount)}원을 시트에서 지울까요?`))return;
+      try{await call('deleteEntry',e.id,e.amount);toast('지웠어요');S.cache={};await loadMonth(S.month,true);renderList()}catch(err){toast(err.message)}
+    });
+  }catch(e){el.innerHTML=`<div class="muted">${esc(e.message)}</div>`}
+}
+async function renderYear(){
+  const el=$('v-year');el.innerHTML='<div class="muted">불러오는 중… (12개월 계산)</div>';
+  try{
+    const y=S.cache.year||(S.cache.year=await call('getYear'));
+    const max=Math.max(1,...y.map(m=>Math.max(m.income,m.expense)));
+    const W=340,H=180,bw=10,step=W/12;
+    const bars=y.map((m,i)=>{const x=i*step+4;const hi=m.income/max*(H-24),he=m.expense/max*(H-24);
+      return `<rect x="${x}" y="${H-20-hi}" width="${bw}" height="${hi}" rx="2" fill="var(--inc)"/><rect x="${x+bw+1}" y="${H-20-he}" width="${bw}" height="${he}" rx="2" fill="var(--exp)"/><text x="${x+bw}" y="${H-4}" text-anchor="middle">${m.month}</text>`}).join('');
+    const ti=y.reduce((s,m)=>s+m.income,0),te=y.reduce((s,m)=>s+m.expense,0);
+    el.innerHTML=`<div class="card"><div class="stats">
+      <div class="stat"><div class="k">총수입</div><div class="v inc">${won(ti)}</div></div>
+      <div class="stat"><div class="k">총지출</div><div class="v exp">${won(te)}</div></div>
+      <div class="stat"><div class="k">총잔액</div><div class="v">${won(ti-te)}</div></div></div></div>
+      <div class="card"><svg viewBox="0 0 ${W} ${H}" width="100%">${bars}</svg>
+      <div class="legend"><span><i style="background:var(--inc)"></i>수입</span><span><i style="background:var(--exp)"></i>지출</span></div></div>
+      <div class="card">${y.map(m=>`<div class="item"><div class="t">${m.month}월</div><div class="a"><span class="inc">${won(m.income)}</span> / <span class="exp">${won(m.expense)}</span></div></div>`).join('')}</div>`;
+  }catch(e){el.innerHTML=`<div class="muted">${esc(e.message)}</div>`}
+}
+
+async function boot(){
+  $('date').value=today();
+  try{
+    S.boot=await call('getBootstrap');
+    if(!S.boot.ok){toast('월별 탭을 찾지 못했어요');}
+    S.month=S.boot.currentMonth;
+    setKind('expense');
+    go('add');
+  }catch(e){toast(e.message||'불러오기 실패')}
+}
+if(!S.boot&&!store.get('key'))showKey(false);else boot();
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
