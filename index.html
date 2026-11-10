@@ -47,6 +47,22 @@ input[type=text],input[type=date],input[type=password]{width:100%;border:1px sol
 .inc{color:var(--inc)}.exp{color:var(--exp)}
 .sec{font-weight:700;margin-bottom:8px}
 .sgw{padding:10px}
+.sgscroll{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:8px}.sgscroll .sgrid{min-width:440px}
+.sec2{display:flex;justify-content:space-between;align-items:baseline;gap:8px}.sec2 .sm{font-size:15px;font-variant-numeric:tabular-nums}.sec2 small{color:var(--sub);font-weight:400;font-size:12px}
+.big{font-size:28px;font-weight:800;font-variant-numeric:tabular-nums;margin:2px 0 10px}.big small{font-size:15px;margin-left:2px;color:var(--sub);font-weight:600}
+.pace{height:10px;border-radius:5px;background:var(--chip);overflow:hidden}.pace i{display:block;height:100%;background:var(--exp);border-radius:5px}
+.vs{padding:8px 0}.vs1{display:flex;justify-content:space-between;gap:8px;font-size:14px;font-variant-numeric:tabular-nums;margin-bottom:5px}.vs1 small{font-size:11.5px}
+.vt{position:relative;height:8px;border-radius:4px;background:var(--chip)}.vt i{position:absolute;left:0;top:0;height:100%;border-radius:4px}
+.vt i.p{background:var(--sub);opacity:.45}.vt i.c{background:var(--exp);opacity:.6;height:4px;top:2px}.vt i.c.over{opacity:1}
+.zero{font-size:12.5px;color:var(--sub);margin-top:8px;line-height:1.5}
+.hb{display:grid;grid-template-columns:minmax(0,96px) 1fr auto;gap:8px;align-items:center;font-size:13.5px;margin:7px 0;font-variant-numeric:tabular-nums}
+.hn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ht i{display:block;height:9px;border-radius:5px;opacity:.85}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px}.tile{background:var(--chip);border-radius:10px;padding:10px}.tile .k{font-size:11.5px;color:var(--sub)}.tile .v{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums;margin-top:2px}
+.tile.main{grid-column:1/-1}.tile.main .v{font-size:20px}
+.stack{display:flex;height:14px;border-radius:7px;overflow:hidden;gap:2px;margin-bottom:8px}.stack i{display:block;height:100%}
+.sv{display:grid;grid-template-columns:14px 1fr auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}.sv:last-child{border:0}
+.dot{width:10px;height:10px;border-radius:50%}.svn{font-size:14px;line-height:1.3}.svn small,.svv small{display:block;font-size:11.5px;color:var(--sub)}
+.svv{text-align:right;font-variant-numeric:tabular-nums;font-size:14px;line-height:1.3}
 .sgrid{display:grid;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden;font-size:12.5px}
 .sg{background:var(--card);padding:7px 6px;min-height:30px;display:flex;align-items:center;justify-content:center;text-align:center;word-break:keep-all;line-height:1.25}
 .sg.n{justify-content:flex-end;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;letter-spacing:-.2px}
@@ -279,21 +295,20 @@ async function go(v){
   if(v==='year')renderYear();
 }
 const sec=t=>`<div class="sec">${t}</div>`;
-// 이번 달 탭: [시트 요약 | 분석]
+// 이번 달 탭: [요약 | 시트 표 | 분석]
 function renderSum(){
-  const mode=store.get('sumMode')||'sheet';
-  const el=$('v-sum');
-  el.innerHTML=`<div class="seg" style="margin-bottom:12px"><button id="sm-sheet" class="${mode==='sheet'?'on':''}">시트 요약</button><button id="sm-ana" class="${mode==='ana'?'on':''}">분석</button></div><div id="sumBody"><div class="muted">불러오는 중…</div></div>`;
-  $('sm-sheet').onclick=()=>{store.set('sumMode','sheet');renderSum()};
-  $('sm-ana').onclick=()=>{store.set('sumMode','ana');renderSum()};
-  (mode==='sheet'?renderSheet:renderAnalysis)($('sumBody'));
+  let mode=store.get('sumMode')||'vis';if(!['vis','sheet','ana'].includes(mode))mode='vis';
+  const el=$('v-sum'),tabs=[['vis','요약'],['sheet','시트 표'],['ana','분석']];
+  el.innerHTML=`<div class="seg" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:12px">${tabs.map(([k,t])=>`<button data-m="${k}" class="${mode===k?'on':''}">${t}</button>`).join('')}</div><div id="sumBody"><div class="muted">불러오는 중…</div></div>`;
+  el.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{store.set('sumMode',b.dataset.m);renderSum()});
+  ({vis:renderVisual,sheet:renderSheet,ana:renderAnalysis})[mode]($('sumBody'));
 }
+async function getSummary(m){const k='s'+m;return S.cache[k]||(S.cache[k]=await call('getSummary',m))}
 // 시트 왼쪽 요약표를 보이는 그대로 (칸 합치기·머리글 색·굵게·▲▼ 색 반영)
 const lum=hex=>{const m=/^#?([0-9a-f]{6})$/i.exec(hex||'');if(!m)return 1;const n=parseInt(m[1],16);return((n>>16&255)*.299+(n>>8&255)*.587+(n&255)*.114)/255};
 async function renderSheet(el){
   try{
-    const m=S.month,k='s'+m;
-    const g=S.cache[k]||(S.cache[k]=await call('getSummary',m));
+    const g=await getSummary(S.month);
     const cover={},span={};
     g.merges.forEach(([r0,c0,nr,nc])=>{span[r0+','+c0]=[nr,nc];for(let r=r0;r<r0+nr;r++)for(let c=c0;c<c0+nc;c++)if(r!==r0||c!==c0)cover[r+','+c]=1});
     let html='',blank=0;
@@ -310,7 +325,84 @@ async function renderSheet(el){
         html+=`<div class="sg${shade?' h':''}${g.bold[r][c]?' b':''}${num?' n':''}${cls}" style="grid-column:${c+1}/span ${sp[1]}${sp[0]>1?`;grid-row:span ${sp[0]}`:''}">${esc(txt)}</div>`;
       });
     });
-    el.innerHTML=`<div class="card sgw"><div class="sgrid" style="grid-template-columns:1.35fr repeat(${g.cols-1},1fr)">${html}</div></div>`;
+    el.innerHTML=`<div class="card sgw"><div class="sgscroll"><div class="sgrid" style="grid-template-columns:minmax(118px,1.35fr) repeat(${g.cols-1},minmax(92px,1fr))">${html}</div></div><div class="meta" style="border:0;margin-top:6px;padding:0;text-align:center">← 좌우로 밀어서 볼 수 있어요 →</div></div>`;
+  }catch(e){el.innerHTML=`<div class="muted">${esc(e.message)}</div>`}
+}
+// ---- 요약(시각화): 시트 요약표 값을 읽어 그래프로 ----
+const numOf=s=>{s=String(s||'').trim();if(!s||s==='-')return 0;const n=Number(s.replace(/[^\d.]/g,''));if(isNaN(n))return 0;return /^-\s*\d/.test(s)?-n:n};
+const nz=s=>String(s||'').replace(/\s+/g,'');
+function parseSummary(g){
+  const R=g.rows.map(r=>r.map(v=>String(v).trim()));
+  const find=t=>{for(let r=0;r<R.length;r++){const c=R[r].findIndex(x=>nz(x)===t);if(c>=0)return[r,c]}return null};
+  const out={};
+  // 고정/유동지출: 항목 | 전월 | 지출 | 증감
+  out.groups=['고정지출','유동지출'].map(name=>{
+    const p=find(name);if(!p)return null;const items=[];let total=null;
+    for(let i=p[0]+1;i<R.length;i++){const row=R[i],k=nz(row[0]);
+      if(k==='항목')continue;if(k==='합계'){total={prev:numOf(row[1]),cur:numOf(row[2])};break}
+      if(!k||k==='고정지출'||k==='유동지출')break;
+      items.push({name:row[0],prev:numOf(row[1]),cur:numOf(row[2])})}
+    return{name,items,total:total||{prev:items.reduce((s,x)=>s+x.prev,0),cur:items.reduce((s,x)=>s+x.cur,0)}};
+  }).filter(Boolean);
+  const t=find('총합계');if(t)out.grand={prev:numOf(R[t[0]][t[1]+1]),cur:numOf(R[t[0]][t[1]+2])};
+  // 항목별수입 | 지출구분
+  const pi=find('항목별수입');
+  if(pi){const qc=R[pi[0]].findIndex(x=>nz(x)==='지출구분');out.income=[];out.pay=[];
+    for(let i=pi[0]+1;i<R.length;i++){const row=R[i];const L=nz(row[pi[1]]),Rt=qc>=0?nz(row[qc]):'';
+      if(!L&&!Rt&&!row.some(Boolean))break;
+      if(L==='합계'){out.incomeTotal=numOf(row[pi[1]+1]);if(qc>=0)out.payTotal=numOf(row[qc+1]);break}
+      if(L)out.income.push({name:row[pi[1]],v:numOf(row[pi[1]+1])});
+      if(Rt&&Rt!=='합계')out.pay.push({name:row[qc],v:numOf(row[qc+1])})}}
+  // 잔액 블록
+  const pb=find('잔액');
+  if(pb){out.bal=[];for(let i=pb[0];i<R.length;i++){const row=R[i];if(!row[0])break;
+    out.bal.push({name:row[0],v:numOf(row[1]),extra:row.slice(2).filter(x=>/\d/.test(x))})}}
+  // 저축현황: 은행 | 잔고 | 만기 | 비고
+  const ps=find('은행');
+  if(ps){out.sav=[];for(let i=ps[0]+1;i<R.length;i++){const row=R[i];const k=nz(row[0]);
+    if(k==='합계'){out.savTotal=numOf(row[1]);break}if(!k)break;
+    out.sav.push({name:row[0],v:numOf(row[1]),due:row[2]||'',note:row[3]||''})}
+    if(out.savTotal==null)out.savTotal=out.sav.reduce((s,x)=>s+x.v,0)}
+  return out;
+}
+function hbars(list,color){
+  const show=list.filter(x=>x.v),zero=list.filter(x=>!x.v),max=Math.max(1,...show.map(x=>x.v));
+  return show.sort((a,b)=>b.v-a.v).map(x=>`<div class="hb"><span class="hn">${esc(x.name)}</span><span class="ht"><i style="width:${Math.max(2,x.v/max*100)}%;background:${color}"></i></span><b>${won(x.v)}</b></div>`).join('')
+    +(zero.length?`<div class="zero">0원 · ${zero.map(x=>esc(x.name)).join(', ')}</div>`:'')
+    +(!show.length&&!zero.length?'<div class="muted">내용 없음</div>':'');
+}
+async function renderVisual(el){
+  try{
+    const g=await getSummary(S.month),s=parseSummary(g);
+    if(!s.groups.length&&!s.sav){renderSheet(el);return}
+    let html='';
+    // 총합계: 이번 달 지출 vs 전월
+    if(s.grand){const{prev,cur}=s.grand,pct=prev?cur/prev*100:0;
+      html+=`<div class="card"><div class="sec">이번 달 지출</div><div class="big exp">${won(cur)}<small>원</small></div>
+      <div class="pace"><i style="width:${Math.min(100,pct)}%"></i></div>
+      <div class="meta" style="border:0;padding:0;margin-top:6px">전월 ${won(prev)}원의 <b>${Math.round(pct)}%</b> · ${cur<=prev?`전월보다 <b class="inc">${won(prev-cur)}원 덜</b> 썼어요`:`전월보다 <b class="exp">${won(cur-prev)}원 더</b> 썼어요`}</div></div>`}
+    // 고정/유동: 전월 대비 막대 (회색 = 전월, 색 = 이번 달)
+    s.groups.forEach(gr=>{
+      const act=gr.items.filter(x=>x.prev||x.cur),zero=gr.items.filter(x=>!x.prev&&!x.cur);
+      const max=Math.max(1,...act.map(x=>Math.max(x.prev,x.cur)));
+      html+=`<div class="card"><div class="sec sec2"><span>${gr.name}</span><span class="sm">${won(gr.total.cur)} <small>/ 전월 ${won(gr.total.prev)}</small></span></div>
+      ${act.map(x=>{const d=x.cur-x.prev;return `<div class="vs"><div class="vs1"><span>${EMOJI[nz(x.name)]||'🏷️'} ${esc(x.name)}</span><span><b>${won(x.cur)}</b> <small class="${d>0?'exp':'inc'}">${d>0?'▲':'▼'}${won(Math.abs(d))}</small></span></div>
+        <div class="vt"><i class="p" style="width:${x.prev/max*100}%"></i><i class="c${x.cur>x.prev?' over':''}" style="width:${Math.max(x.cur?1.5:0,x.cur/max*100)}%"></i></div></div>`}).join('')}
+      ${zero.length?`<div class="zero">0원 · ${zero.map(x=>esc(x.name)).join(', ')}</div>`:''}
+      <div class="legend"><span><i style="background:var(--sub);opacity:.45"></i>전월</span><span><i style="background:var(--exp)"></i>이번 달</span></div></div>`});
+    // 수입 / 지출구분
+    if(s.income)html+=`<div class="card"><div class="sec sec2"><span>항목별 수입</span><span class="sm inc">${won(s.incomeTotal??s.income.reduce((a,x)=>a+x.v,0))}</span></div>${hbars(s.income,'var(--inc)')}</div>`;
+    if(s.pay)html+=`<div class="card"><div class="sec sec2"><span>지출 구분</span><span class="sm exp">${won(s.payTotal??s.pay.reduce((a,x)=>a+x.v,0))}</span></div>${hbars(s.pay,'var(--acc)')}</div>`;
+    // 잔액
+    if(s.bal&&s.bal.length)html+=`<div class="card"><div class="sec">잔액</div><div class="tiles">${s.bal.map((x,i)=>`<div class="tile${i===0?' main':''}"><div class="k">${esc(x.name)}</div><div class="v${x.v<0?' exp':''}">${won(x.v)}</div>${x.extra.length?`<div class="k">${x.extra.map(esc).join(' · ')}</div>`:''}</div>`).join('')}</div></div>`;
+    // 저축현황
+    if(s.sav&&s.sav.length){
+      const list=[...s.sav].sort((a,b)=>b.v-a.v),tot=Math.max(1,s.savTotal),col=i=>`hsl(${(205+i*360/list.length)%360} 48% 56%)`;
+      html+=`<div class="card"><div class="sec">저축 현황</div><div class="big">${won(s.savTotal)}<small>원</small></div>
+      <div class="stack">${list.filter(x=>x.v>0).map((x,i)=>`<i style="width:${x.v/tot*100}%;background:${col(i)}"></i>`).join('')}</div>
+      ${list.map((x,i)=>`<div class="sv"><span class="dot" style="background:${x.v>0?col(i):'var(--line)'}"></span><div class="svn">${esc(x.name)}${x.due||x.note?`<small>${esc([x.due&&('만기 '+x.due),x.note].filter(Boolean).join(' · '))}</small>`:''}</div><div class="svv"><b>${x.v?won(x.v):'-'}</b>${x.v?`<small>${(x.v/tot*100).toFixed(1)}%</small>`:''}</div></div>`).join('')}</div>`;
+    }
+    el.innerHTML=html;
   }catch(e){el.innerHTML=`<div class="muted">${esc(e.message)}</div>`}
 }
 async function renderAnalysis(el){
