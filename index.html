@@ -295,7 +295,7 @@ function showKey(fromGear){cfOpen();
 }
 function hideKey(){$('v-key').hidden=true;if(S.boot)go(S.view||'add');else boot()}
 async function saveKey(){const v=$('keyIn').value.trim();if(!v){toast('키를 입력해 주세요');return}store.set('key',v);store.del('ok');$('v-key').hidden=true;await boot()}
-function clearKey(){if(!confirm('이 휴대폰에서 키를 지울까요? 다시 입력해야 앱을 쓸 수 있어요.'))return;store.del('key');store.del('ok');S.boot=null;$('v-key').hidden=true;splashAsk()}
+function clearKey(){if(!confirm('이 휴대폰에서 키를 지울까요? 다시 입력해야 앱을 쓸 수 있어요.'))return;store.del('key');store.del('ok');Object.keys(localStorage).filter(k=>k.startsWith('bootc_')).forEach(k=>store.del(k));S.boot=null;$('v-key').hidden=true;splashAsk()}
 function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),2200)}
 function today(){const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10)}
 
@@ -402,7 +402,7 @@ async function switchYear(y){
   if(y===S.boot.year)return;
   const prev=S.boot;$('title').textContent=y+'년 …';
   try{
-    S.boot=await call('getBootstrap',y);
+    S.boot=fixMonth(await call('getBootstrap',y));saveBoot(y,S.boot);
     store.set('year',String(y));S.cache={};exitSel();S.month=S.boot.currentMonth;
     setKind(S.kind);go(S.view);toast(y+'년 가계부');
   }catch(e){S.boot=prev;go(S.view);toast(e.message)}
@@ -719,23 +719,44 @@ function showErr(msg){
   ['add','sum','list','year','key'].forEach(x=>$('v-'+x).hidden=true);
   $('v-err').hidden=false;$('mnav').hidden=true;$('title').textContent='연결 안 됨';$('errMsg').textContent=msg;
 }
+// 첫 화면: 이 휴대폰에 저장해 둔 목록으로 바로 시작하고, 최신 목록은 뒤에서 받아와 바꿔 끼움
+const bootKey=y=>'bootc_'+(y||'def');
+function saveBoot(y,b){try{localStorage.setItem(bootKey(y),JSON.stringify(b))}catch(e){}}
+function loadBoot(y){try{return JSON.parse(localStorage.getItem(bootKey(y))||'null')}catch(e){return null}}
+function fixMonth(b){const n=new Date();b.currentMonth=n.getFullYear()===b.year?n.getMonth()+1:b.months[b.months.length-1];return b}
+function startWith(b){
+  S.boot=fixMonth(b);
+  if(!S.boot.ok)toast('월별 탭을 찾지 못했어요');
+  S.month=S.boot.currentMonth;setKind('expense');
+  $('splash').hidden=true;go('add');
+}
+async function fetchBoot(sy){
+  try{return await call('getBootstrap',sy)}
+  catch(e){if(sy&&!e.auth&&/연결되어 있지 않아요|열지 못했어요/.test(e.message)){store.del('year');return await call('getBootstrap',null)}throw e}
+}
+function authLost(e){const was=store.get('ok');store.del('key');store.del('ok');splashAsk(was?'비밀 키가 바뀌었어요. 새 키를 입력해 주세요.':e.message,true)}
 async function boot(){
   $('date').value=today();$('v-err').hidden=true;
   if(!store.get('key')){splashAsk();return}
+  const sy=Number(store.get('year'))||null,cached=store.get('ok')&&loadBoot(sy);
+  if(cached){
+    startWith(cached);                                     // 바로 화면 표시
+    try{                                                   // 뒤에서 최신 목록 받아오기
+      const fresh=await fetchBoot(sy);saveBoot(sy,fresh);
+      if(fresh.year!==S.boot.year){S.cache={};startWith(fresh);return}
+      const m=S.month;S.boot=fixMonth(fresh);S.month=m;
+      if(S.view==='add')renderForm();
+    }catch(e){if(e.auth)authLost(e)}                       // 연결 실패는 조용히 넘어가고, 쓸 때 다시 시도
+    return;
+  }
   splashLoading();
   try{
-    const sy=Number(store.get('year'))||null;
-    try{S.boot=await call('getBootstrap',sy)}
-    catch(e){if(sy&&!e.auth&&/연결되어 있지 않아요|열지 못했어요/.test(e.message)){store.del('year');S.boot=await call('getBootstrap',null)}else throw e}
-    store.set('ok','1');                       // 이 기기는 확인됨 → 키가 바뀌기 전까지 다시 묻지 않음
-    if(!S.boot.ok){toast('월별 탭을 찾지 못했어요');}
-    S.month=S.boot.currentMonth;
-    setKind('expense');
-    $('splash').hidden=true;
-    go('add');
+    const b=await fetchBoot(sy);
+    store.set('ok','1');                                   // 이 기기는 확인됨 → 키가 바뀌기 전까지 다시 묻지 않음
+    saveBoot(sy,b);startWith(b);
   }catch(e){
     S.err=e.message||'불러오기 실패';
-    if(e.auth){const was=store.get('ok');store.del('key');store.del('ok');splashAsk(was?'비밀 키가 바뀌었어요. 새 키를 입력해 주세요.':S.err,true);return}
+    if(e.auth){authLost(e);return}
     if(store.get('ok')){$('splash').hidden=true;showErr(S.err);return}   // 확인된 기기: 키는 묻지 않고 연결 문제만 안내
     splashAsk(S.err,true);
   }
