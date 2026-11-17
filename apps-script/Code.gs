@@ -200,10 +200,12 @@ function tablesOf_(sh) {
   return tables;
 }
 
-/** 표의 데이터 영역(머리글 다음 ~ 합계 줄 전) 읽기 */
-function readTable_(sh, t) {
+/** 표의 데이터 영역(머리글 다음 ~ 합계 줄 전) 읽기
+ *  extra: 시트의 마지막 내용 줄 아래로 더 읽을 줄 수. 맨 아래 표는 내용이 끝난 뒤의 빈 줄이
+ *  getLastRow() 밖에 있어서, 빈 줄을 찾을 때는 그 아래까지 봐야 함 */
+function readTable_(sh, t, extra) {
   const first = t.headerRow + 1;
-  const last = t.lastRow || sh.getLastRow();
+  const last = t.lastRow || Math.min(sh.getMaxRows(), sh.getLastRow() + (extra || 0));
   if (last < first) return { first: first, values: [], display: [] };
   const width = t.endCol - t.startCol + 1;
   const rng = sh.getRange(first, t.startCol, last - first + 1, width);
@@ -414,7 +416,7 @@ function writeRow_(v, row, e) {
 }
 
 function emptyRow_(v) {
-  const t = v.t, d = readTable_(v.sh, t);
+  const t = v.t, d = readTable_(v.sh, t, 50);
   const idx = d.values.findIndex(row => row[0] !== '__header__' && Object.keys(t.map).every(k => !norm_(cell_(t, row, k))));
   if (idx < 0) throw new Error(v.month + '월 ' + (t.kind === 'income' ? '수입' : '지출') + ' 표에 빈 줄이 없어요. 시트에서 줄을 추가해 주세요.');
   return d.first + idx;
