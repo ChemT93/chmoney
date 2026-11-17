@@ -145,6 +145,12 @@ nav button.on{color:var(--acc);font-weight:700}
 #spForm input{text-align:center;font-size:18px;letter-spacing:1px}
 .toast{z-index:45;position:fixed;left:50%;top:calc(70px + env(safe-area-inset-top));transform:translateX(-50%);background:#333;color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;transition:.25s;pointer-events:none;max-width:90%}
 .toast.show{opacity:1}
+.toast.pop{animation:tpop .5s ease-out}
+@keyframes tpop{0%{box-shadow:0 0 0 0 var(--w);transform:translateX(-50%) scale(.92)}40%{transform:translateX(-50%) scale(1.04)}100%{box-shadow:0 0 0 14px transparent;transform:translateX(-50%) scale(1)}}
+.wave{position:fixed;inset:0;z-index:44;pointer-events:none;overflow:hidden}
+.wave i{position:absolute;border-radius:50%;transform:scale(0);opacity:0;background:radial-gradient(circle closest-side,transparent 62%,var(--w) 92%,transparent 100%);animation:wave 1.2s cubic-bezier(.15,.6,.35,1) forwards}
+@keyframes wave{0%{transform:scale(0);opacity:.6}100%{transform:scale(1);opacity:0}}
+@media (prefers-reduced-motion:reduce){.toast.pop{animation:none}.wave{display:none}}
 .muted{color:var(--sub);font-size:14px;text-align:center;padding:24px 0}
 svg text{fill:var(--sub);font-size:11px}
 .legend{display:flex;gap:14px;font-size:13px;color:var(--sub);margin-top:8px}.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:middle}
@@ -227,6 +233,7 @@ applySplash();
 <div id="selbar" hidden><button class="sb-x" onclick="exitSel()" aria-label="선택 취소">✕</button><div class="sb-t"><b id="selN">0개 선택</b><small id="selSum"></small></div><button class="sb-all" onclick="selAll()">전체</button><button class="sb-del" onclick="askDelete([...S.sel])">삭제</button></div>
 <div id="ss" hidden><div class="ss-back" onclick="closeSide()"></div><div class="ss-panel" role="dialog" aria-label="연도 선택"><div class="ss-h">연도</div><div id="ssList"></div></div></div>
 <div id="bs" hidden><div class="bs-back" onclick="closeSheet()"></div><div class="bs-panel" role="dialog" aria-modal="true"><div class="bs-grab"></div><div id="bsBody"></div></div></div>
+<div class="wave" id="wave"></div>
 <div class="toast" id="toast"></div>
 <script>
 const S={kind:'expense',cat:'',sub:'',pay:'',boot:null,month:null,cache:{},view:'add'};
@@ -300,7 +307,15 @@ function showKey(fromGear){cfOpen();
 function hideKey(){$('v-key').hidden=true;if(S.boot)go(S.view||'add');else boot()}
 async function saveKey(){const v=$('keyIn').value.trim();if(!v){toast('키를 입력해 주세요');return}store.set('key',v);store.del('ok');$('v-key').hidden=true;await boot()}
 function clearKey(){if(!confirm('이 휴대폰에서 키를 지울까요? 다시 입력해야 앱을 쓸 수 있어요.'))return;store.del('key');store.del('ok');Object.keys(localStorage).filter(k=>k.startsWith('bootc_')).forEach(k=>store.del(k));S.boot=null;$('v-key').hidden=true;splashAsk()}
-function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),2200)}
+function toast(msg,wave){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),2200);if(wave)waveFrom(t,wave)}
+function waveFrom(el,color){
+  const b=$('wave'),r=el.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;
+  const R=Math.hypot(Math.max(cx,innerWidth-cx),Math.max(cy,innerHeight-cy));
+  el.style.setProperty('--w',color);el.classList.remove('pop');void el.offsetWidth;el.classList.add('pop');
+  b.innerHTML='';
+  for(let k=0;k<3;k++){const i=document.createElement('i');i.style.cssText=`left:${cx-R}px;top:${cy-R}px;width:${2*R}px;height:${2*R}px;--w:${color};animation-delay:${k*.2}s`;b.appendChild(i)}
+  clearTimeout(b._h);b._h=setTimeout(()=>{b.innerHTML='';el.classList.remove('pop')},1800);
+}
 function today(){const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10)}
 
 function chips(el,items,cur,onPick){
@@ -356,7 +371,7 @@ async function save(){
   const btn=$('save');btn.disabled=true;btn.textContent='저장 중…';
   try{
     const r=await call('addEntry',{kind:S.kind,amount,cat:S.cat,sub:S.sub,memo:$('memo').value.trim(),pay:S.pay,date:$('date').value||today()});
-    toast(`저장했어요 · ${r.sheet} ${r.row}행`);
+    toast(`저장했어요 · ${r.sheet} ${r.row}행`,S.kind==='income'?'var(--inc)':'var(--acc)');
     $('amt').value='';$('memo').value='';S.sub='';renderForm();
     S.cache={};
   }catch(e){toast(e.message||'저장하지 못했어요')}
