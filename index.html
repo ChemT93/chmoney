@@ -317,6 +317,11 @@ function waveFrom(el,color){
   clearTimeout(b._h);b._h=setTimeout(()=>{b.innerHTML='';el.classList.remove('pop')},1800);
 }
 function today(){const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10)}
+// 날짜 칸: 앱이 자동으로 넣은 '오늘'은 날이 바뀌면 새 오늘로 바꿈. 사용자가 직접 고른 날짜는 그대로 둠
+let autoDate='';
+function setToday(){autoDate=today();$('date').value=autoDate}
+function refreshToday(){if(document.hidden)return;const t=today();if(autoDate&&autoDate!==t&&$('date').value===autoDate)setToday()}
+document.addEventListener('visibilitychange',refreshToday);addEventListener('pageshow',refreshToday);addEventListener('focus',refreshToday);
 
 function chips(el,items,cur,onPick){
   el.innerHTML=items.map(x=>`<button class="${x===cur?'on':''}">${esc(x)}</button>`).join('')||'<span class="muted" style="padding:0">항목 없음</span>';
@@ -368,6 +373,7 @@ async function save(){
   const raw=$('amt').value.replace(/[^\d]/g,''),amount=Number(raw);
   if(raw===''){toast('금액을 입력해 주세요 (0원도 가능)');$('amt').focus();return}
   if(!S.cat){toast('분류를 골라 주세요');return}
+  refreshToday();   // 앱을 켜 둔 채 자정이 지난 경우
   const btn=$('save');btn.disabled=true;btn.textContent='저장 중…';
   try{
     const r=await call('addEntry',{kind:S.kind,amount,cat:S.cat,sub:S.sub,memo:$('memo').value.trim(),pay:S.pay,date:$('date').value||today()});
@@ -802,7 +808,7 @@ async function fetchBoot(sy){
 }
 function authLost(e){const was=store.get('ok');store.del('key');store.del('ok');splashAsk(was?'비밀 키가 바뀌었어요. 새 키를 입력해 주세요.':e.message,true)}
 async function boot(){
-  $('date').value=today();$('v-err').hidden=true;
+  setToday();$('v-err').hidden=true;
   if(!store.get('key')){splashAsk();return}
   const sy=Number(store.get('year'))||null,cached=store.get('ok')&&loadBoot(sy);
   if(cached){
