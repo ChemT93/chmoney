@@ -13,6 +13,7 @@
 :root{--bg:#f6f5f2;--card:#fff;--ink:#1d1d1f;--sub:#6e6e73;--line:#e6e4df;--exp:#d9534f;--inc:#2f7d5b;--acc:#2f5d8a;--chip:#efede8}
 @media (prefers-color-scheme:dark){:root{--bg:#141414;--card:#1f1f21;--ink:#f2f2f2;--sub:#a0a0a6;--line:#2e2e31;--exp:#ff7b72;--inc:#5fcf9a;--acc:#7fb0e0;--chip:#2a2a2d}}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{overscroll-behavior-y:none}   /* 브라우저 자체 당겨서 새로고침(앱 전체 다시 시작) 막기. 앱의 새로고침만 사용 */
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 -apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;padding-bottom:calc(72px + env(safe-area-inset-bottom))}
 header{position:sticky;top:0;background:var(--bg);padding:14px 16px 8px;z-index:5;display:flex;align-items:center;justify-content:space-between}
 h1{font-size:20px;margin:0;white-space:nowrap}
@@ -80,6 +81,7 @@ input[type=text],input[type=date],input[type=password]{width:100%;border:1px sol
 .sg.n{justify-content:flex-end;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;letter-spacing:-.2px}
 .sg.h{background:var(--chip);color:var(--sub);font-weight:600}
 .sg.b{font-weight:700}.sg.blue{color:var(--acc)}.sg.red{color:var(--exp)}
+.sg.ed{cursor:pointer}.sg.ed span{border-bottom:1px dashed var(--sub);padding-bottom:1px}.sg.ed:active{background:var(--chip)}
 .sg-gap{grid-column:1/-1;height:14px;background:var(--card)}
 .meta{font-size:13px;color:var(--sub);margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}
 .meta b{color:var(--ink);font-weight:700}.meta b.exp{color:var(--exp)}.meta b.inc{color:var(--inc)}
@@ -416,6 +418,7 @@ async function go(v){
   if(!S.boot){showErr(S.err||'아직 불러오는 중이에요');return}
   if(v!=='list'||S._m!==S.month)exitSel();S._m=S.month;
   S.view=v;$('v-key').hidden=true;$('v-err').hidden=true;
+  try{sessionStorage.setItem('nav',JSON.stringify({v,m:S.month}))}catch(e){}   // 앱이 다시 시작돼도 보던 화면으로
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
   ['add','sum','list','year'].forEach(x=>$('v-'+x).hidden=x!==v);
   $('mnav').hidden=!(v==='sum'||v==='list');
@@ -484,7 +487,8 @@ const lum=hex=>{const m=/^#?([0-9a-f]{6})$/i.exec(hex||'');if(!m)return 1;const 
 async function renderSheet(el){
   try{
     const g=await getSummary(S.month);
-    const cover={},span={};
+    const cover={},span={},edAt={};
+    (g.edit||[]).forEach((e,i)=>edAt[e[0]+','+e[1]]=i);
     g.merges.forEach(([r0,c0,nr,nc])=>{span[r0+','+c0]=[nr,nc];for(let r=r0;r<r0+nr;r++)for(let c=c0;c<c0+nc;c++)if(r!==r0||c!==c0)cover[r+','+c]=1});
     let html='',blank=0;
     g.rows.forEach((row,r)=>{
@@ -497,11 +501,37 @@ async function renderSheet(el){
         const num=/^[-▲▼😊😭+]?[\s]*[-\d,.]+$/.test(txt.replace(/^[^\d-]+/,''))&&/\d/.test(txt);
         const col=(g.color[r][c]||'').toLowerCase();const n=/^#?([0-9a-f]{6})$/.exec(col);let cls='';
         if(n){const x=parseInt(n[1],16),R=x>>16&255,G=x>>8&255,B=x&255;if(B>150&&R<100&&G<100)cls=' blue';else if(R>150&&G<100&&B<100)cls=' red'}
-        html+=`<div class="sg${shade?' h':''}${g.bold[r][c]?' b':''}${num?' n':''}${cls}" style="grid-column:${c+1}/span ${sp[1]}${sp[0]>1?`;grid-row:span ${sp[0]}`:''}">${esc(txt)}</div>`;
+        const ei=edAt[r+','+c];
+        html+=`<div class="sg${shade?' h':''}${g.bold[r][c]?' b':''}${num?' n':''}${cls}${ei!=null?' ed':''}"${ei!=null?` data-e="${ei}"`:''} style="grid-column:${c+1}/span ${sp[1]}${sp[0]>1?`;grid-row:span ${sp[0]}`:''}">${ei!=null?`<span>${esc(txt)}</span>`:esc(txt)}</div>`;
       });
     });
     el.innerHTML=`<div class="card sgw"><div class="sgscroll"><div class="sgrid" style="grid-template-columns:minmax(118px,1.35fr) repeat(${g.cols-1},minmax(92px,1fr))">${html}</div></div><div class="meta" style="border:0;margin-top:6px;padding:0;text-align:center">← 좌우로 밀어서 볼 수 있어요 →</div></div>`;
+    el.querySelectorAll('.sg.ed').forEach(d=>d.onclick=()=>openCellEdit(g,g.edit[d.dataset.e]));
   }catch(e){el.innerHTML=`<div class="muted">${esc(e.message)}</div>`}
+}
+// 시트 표의 손으로 적은 금액 칸(통장 잔액 등) 고치기
+function openCellEdit(g,e){
+  const [r,c,row,col,old]=e,m=S.month,y=S.boot.year;
+  const label=g.rows[r].slice(0,c).map(v=>String(v).trim()).filter(Boolean).pop()||'금액';
+  const fmt=v=>{const neg=/^\s*-/.test(v),n=String(v).replace(/[^\d]/g,'');return (neg?'-':'')+(n?Number(n).toLocaleString('ko-KR'):'')};
+  openSheet(`<div class="bs-title">${esc(label)}</div>
+    <div class="amount"><input id="ce-amt" inputmode="numeric" value="${fmt(old)}" autocomplete="off"><span>원</span></div>
+    <div class="bs-btns"><button class="no" onclick="closeSheet()">취소</button><button class="yes" id="ce-save">저장</button></div>`);
+  const inp=$('ce-amt');inp.addEventListener('input',()=>inp.value=fmt(inp.value));
+  setTimeout(()=>{inp.focus();inp.select()},60);
+  $('ce-save').onclick=async()=>{
+    const raw=inp.value.replace(/[^\d-]/g,'');
+    if(!/^-?\d+$/.test(raw)){toast('금액을 입력해 주세요');return}
+    if(Number(raw)===Number(old)){closeSheet();return}
+    const b=$('ce-save');b.disabled=true;b.textContent='저장 중…';
+    try{
+      await call('setSummaryCell',m,y,row,col,old,Number(raw));
+      closeSheet();toast(`${label} 저장했어요`,'var(--acc)');
+      const sx=document.querySelector('.sgscroll')?.scrollLeft||0,sy=scrollY;
+      await getSummary(m,true);
+      if(S.view==='sum'&&S.month===m&&S.boot.year===y&&(store.get('sumMode')||'vis')==='sheet'){await renderSheet($('sumBody'));const s=document.querySelector('.sgscroll');if(s)s.scrollLeft=sx;scrollTo(0,sy)}
+    }catch(err){b.disabled=false;b.textContent='다시 시도';toast(err.message)}
+  };
 }
 // ---- 요약(시각화): 시트 요약표 값을 읽어 그래프로 ----
 const numOf=s=>{s=String(s||'').trim();if(!s||s==='-')return 0;const n=Number(s.replace(/[^\d.]/g,''));if(isNaN(n))return 0;return /^-\s*\d/.test(s)?-n:n};
@@ -800,7 +830,9 @@ function startWith(b){
   S.boot=fixMonth(b);
   if(!S.boot.ok)toast('월별 탭을 찾지 못했어요');
   S.month=S.boot.currentMonth;setKind('expense');
-  $('splash').hidden=true;go('add');
+  let nv='add';
+  try{const s=JSON.parse(sessionStorage.getItem('nav')||'null');if(s&&['add','sum','list','year'].includes(s.v)){nv=s.v;if(S.boot.months.includes(s.m))S.month=s.m}}catch(e){}
+  $('splash').hidden=true;go(nv);
 }
 async function fetchBoot(sy){
   try{return await call('getBootstrap',sy)}

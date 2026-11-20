@@ -35,7 +35,7 @@ function doGet() {
 }
 
 function doPost(e) {
-  const API = { getBootstrap: getBootstrap, getMonth: getMonth, getYear: getYear, getSummary: getSummary, addEntry: addEntry, updateEntry: updateEntry, deleteEntry: deleteEntry, deleteEntries: deleteEntries };
+  const API = { getBootstrap: getBootstrap, getMonth: getMonth, getYear: getYear, getSummary: getSummary, addEntry: addEntry, updateEntry: updateEntry, deleteEntry: deleteEntry, deleteEntries: deleteEntries, setSummaryCell: setSummaryCell };
   let out;
   try {
     const req = JSON.parse(e.postData.contents);
@@ -378,7 +378,34 @@ function getSummary(month, year) {
   const cut = a => a.slice(firstR, lastR + 1).map(row => row.slice(0, lastC + 1));
   const merges = rng.getMergedRanges().map(m => [m.getRow() - 1 - firstR, m.getColumn() - sc, m.getNumRows(), m.getNumColumns()])
     .filter(m => m[0] >= 0 && m[1] <= lastC);
-  return { cols: lastC + 1, rows: cut(vals), bg: cut(bgs), bold: cut(fw).map(r => r.map(x => x === 'bold')), color: cut(fc), merges: merges };
+  // 앱에서 고칠 수 있는 칸: 수식이 아니고 손으로 적은 정수 금액 (예: 통장 잔액, 저축 잔고)
+  const raw = rng.getValues(), fx = rng.getFormulas(), edit = [];
+  for (let r = firstR; r <= lastR; r++)
+    for (let c = 0; c <= lastC; c++)
+      if (editableCell_(raw[r][c], fx[r][c], vals[r][c])) edit.push([r - firstR, c, r + 1, sc + c, raw[r][c]]);
+  return { cols: lastC + 1, rows: cut(vals), bg: cut(bgs), bold: cut(fw).map(r => r.map(x => x === 'bold')), color: cut(fc), merges: merges, edit: edit };
+}
+function editableCell_(value, formula, display) {
+  return !formula && typeof value === 'number' && /^-?\d+$/.test(String(display).replace(/[₩원,\s]/g, ''));
+}
+
+/** 시트 표(왼쪽 요약 영역)의 손으로 적은 금액 칸 하나를 고침. 앱이 본 값과 지금 값이 같을 때만 */
+function setSummaryCell(month, year, row, col, oldValue, newValue) {
+  useYear_(year);
+  const sh = monthSheets_()[Number(month)];
+  if (!sh) throw new Error(month + '월 탭을 찾지 못했어요.');
+  row = Number(row); col = Number(col);
+  const t = tablesOf_(sh)[0];
+  if (!(row >= 1 && col >= 1 && row <= sh.getMaxRows() && (!t || col < t.startCol))) throw new Error('고칠 수 없는 칸이에요.');
+  const n = Number(newValue);
+  if (newValue === '' || newValue == null || !isFinite(n) || Math.round(n) !== n) throw new Error('금액을 확인해 주세요.');
+  return withLock_(() => {
+    const cell = sh.getRange(row, col);
+    if (!editableCell_(cell.getValue(), cell.getFormula(), cell.getDisplayValue())) throw new Error('이 칸은 시트에서만 고칠 수 있어요.');
+    if (Number(cell.getValue()) !== Number(oldValue)) throw new Error('시트 내용이 바뀌었어요. 화면을 당겨 새로고침한 뒤 다시 시도해 주세요.');
+    cell.setValue(n);
+    return { ok: true, value: n, display: cell.getDisplayValue() };
+  });
 }
 
 /* ---------- 쓰기: 추가 · 수정 · 삭제 ---------- */
