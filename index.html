@@ -19,7 +19,10 @@ header{position:sticky;top:0;background:var(--bg);padding:14px 16px 8px;z-index:
 h1{font-size:20px;margin:0;white-space:nowrap}
 .hd-l{display:flex;align-items:center;gap:8px;min-width:0}
 #title{cursor:pointer}
-.sync{font-size:12px;color:var(--sub);white-space:nowrap;animation:blink 1.2s ease-in-out infinite}
+.sync{display:inline-flex;gap:4px;align-items:center;height:14px;margin-left:2px}.sync[hidden]{display:none}   /* 뒤에서 받아오는 중: 작은 동전이 차례로 튐 */
+.sync i{width:9px;height:9px;border-radius:50%;background:var(--gold);border:1.5px solid var(--goldb);animation:hopS .9s ease-in-out infinite}
+.sync i:nth-child(2){animation-delay:.15s}.sync i:nth-child(3){animation-delay:.3s}
+@keyframes hopS{0%,60%,100%{transform:none}30%{transform:translateY(-5px) scaleX(.6)}}
 @keyframes blink{50%{opacity:.4}}
 /* 당겨서 새로고침: 고무줄처럼 내려오고, 빈 공간에 동전이 쌓였다가 통통 튐. 끝나면 금빛 띠가 위에서 아래로 훑음 */
 #ptr{position:fixed;left:0;right:0;z-index:4;display:flex;gap:7px;align-items:center;justify-content:center;pointer-events:none;overflow:hidden;height:0}
@@ -190,7 +193,7 @@ function applySplash(c){c=c||splashCfg();
   document.getElementById('spMsg').textContent=c.msg||SPLASH_DEF.msg;}
 applySplash();
 </script>
-<header><div class="hd-l"><h1 id="title" onclick="titleTap()">가계부</h1><span class="sync" id="sync" hidden>업데이트 중…</span></div><div class="hd-r"><div class="mnav" id="mnav" hidden><button onclick="moveMonth(-1)">‹</button><span id="mlabel"></span><button onclick="moveMonth(1)">›</button></div><button class="gear" id="gear" onclick="showKey(true)" aria-label="설정">⚙</button></div></header>
+<header><div class="hd-l"><h1 id="title" onclick="titleTap()">가계부</h1><span class="sync" id="sync" hidden aria-label="업데이트 중"><i></i><i></i><i></i></span></div><div class="hd-r"><div class="mnav" id="mnav" hidden><button onclick="moveMonth(-1)">‹</button><span id="mlabel"></span><button onclick="moveMonth(1)">›</button></div><button class="gear" id="gear" onclick="showKey(true)" aria-label="설정">⚙</button></div></header>
 <div id="ptr" aria-hidden="true"><i></i><i></i><i></i></div><div id="ptrBand"></div>
 <main>
   <section id="v-key" hidden>
@@ -399,7 +402,7 @@ async function save(){
 
 // ---- 한 번 열어본 탭은 휴대폰에 저장: 다음엔 저장본을 바로 보여주고 최신 데이터는 뒤에서 받아 바꿔 끼움 ----
 S.busy=0;
-function busy(d){S.busy=Math.max(0,S.busy+d);$('sync').hidden=!S.busy}
+function busy(d){S.busy=Math.max(0,S.busy+(d||0));$('sync').hidden=!S.busy||PTB}   // 당겨서 새로고침 중에는 위쪽 큰 동전만
 const vcKey=(t,a)=>'vc_'+S.boot.year+'_'+t+'_'+a;
 function vcGet(k){try{return JSON.parse(localStorage.getItem(k)||'null')}catch(e){return null}}
 function vcSet(k,v){
@@ -486,7 +489,7 @@ addEventListener('touchend',()=>{if(!PT)return;const go_=PULL>=PT_TRIG;PT=null;i
 addEventListener('touchcancel',()=>{if(PT)ptrCancel()});
 async function hardRefresh(){
   const m=S.month,v=S.view,mode=store.get('sumMode')||'vis',p=$('ptr'),t0=Date.now();
-  PTB=true;setPull(PT_HOLD,'transform .3s cubic-bezier(.2,1.2,.4,1),height .3s cubic-bezier(.2,1.2,.4,1)');p.classList.add('hop');
+  PTB=true;busy(0);setPull(PT_HOLD,'transform .3s cubic-bezier(.2,1.2,.4,1),height .3s cubic-bezier(.2,1.2,.4,1)');p.classList.add('hop');
   let ok=false;
   try{
     if(v==='list'||(v==='sum'&&mode==='ana'))await loadMonth(m,true);
@@ -506,7 +509,7 @@ async function hardRefresh(){
     b.style.top=p._top+'px';mn.classList.add('fresh');b.classList.add('go');
     setTimeout(()=>{mn.classList.remove('fresh');b.classList.remove('go')},1400);
   }
-  PTB=false;
+  PTB=false;busy(0);
 }
 function titleTap(){if(S.boot&&YEAR_VIEWS.includes(S.view)&&$('v-key').hidden&&$('v-err').hidden)pickYear()}
 async function switchYear(y){
