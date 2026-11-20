@@ -10,8 +10,8 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <style>
-:root{--bg:#f6f5f2;--card:#fff;--ink:#1d1d1f;--sub:#6e6e73;--line:#e6e4df;--exp:#d9534f;--inc:#2f7d5b;--acc:#2f5d8a;--chip:#efede8}
-@media (prefers-color-scheme:dark){:root{--bg:#141414;--card:#1f1f21;--ink:#f2f2f2;--sub:#a0a0a6;--line:#2e2e31;--exp:#ff7b72;--inc:#5fcf9a;--acc:#7fb0e0;--chip:#2a2a2d}}
+:root{--bg:#f6f5f2;--card:#fff;--ink:#1d1d1f;--sub:#6e6e73;--line:#e6e4df;--exp:#d9534f;--inc:#2f7d5b;--acc:#2f5d8a;--chip:#efede8;--gold:rgba(214,160,40,.55);--goldb:rgba(200,145,30,.7);--goldband:rgba(214,160,40,.22)}
+@media (prefers-color-scheme:dark){:root{--bg:#141414;--card:#1f1f21;--ink:#f2f2f2;--sub:#a0a0a6;--line:#2e2e31;--exp:#ff7b72;--inc:#5fcf9a;--acc:#7fb0e0;--chip:#2a2a2d;--gold:rgba(255,205,90,.5);--goldb:rgba(255,215,120,.6);--goldband:rgba(255,205,90,.2)}}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{overscroll-behavior-y:none}   /* 브라우저 자체 당겨서 새로고침(앱 전체 다시 시작) 막기. 앱의 새로고침만 사용 */
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 -apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;padding-bottom:calc(72px + env(safe-area-inset-bottom))}
@@ -21,7 +21,18 @@ h1{font-size:20px;margin:0;white-space:nowrap}
 #title{cursor:pointer}
 .sync{font-size:12px;color:var(--sub);white-space:nowrap;animation:blink 1.2s ease-in-out infinite}
 @keyframes blink{50%{opacity:.4}}
-#ptr{display:flex;align-items:flex-end;justify-content:center;overflow:hidden;font-size:13px;color:var(--sub);padding-bottom:6px}
+/* 당겨서 새로고침: 고무줄처럼 내려오고, 빈 공간에 동전이 쌓였다가 통통 튐. 끝나면 금빛 띠가 위에서 아래로 훑음 */
+#ptr{position:fixed;left:0;right:0;z-index:4;display:flex;gap:7px;align-items:center;justify-content:center;pointer-events:none;overflow:hidden;height:0}
+#ptr i{width:20px;height:20px;border-radius:50%;background:var(--gold);border:2px solid var(--goldb);opacity:0;transform:translateY(-14px) scale(.6);transition:opacity .18s,transform .25s cubic-bezier(.3,1.6,.5,1)}
+#ptr i.on{opacity:1;transform:none}
+#ptr.hop i{opacity:1;animation:hop .9s ease-in-out infinite}#ptr.hop i:nth-child(2){animation-delay:.15s}#ptr.hop i:nth-child(3){animation-delay:.3s}
+@keyframes hop{0%,60%,100%{transform:none}30%{transform:translateY(-10px) scaleX(.6)}}
+#ptrBand{position:fixed;left:0;right:0;top:0;height:190px;z-index:4;pointer-events:none;background:linear-gradient(to bottom,transparent,var(--goldband) 50%,transparent);opacity:0}
+#ptrBand.go{animation:band 1.25s cubic-bezier(.4,0,.2,1) forwards}
+@keyframes band{from{transform:translateY(-190px);opacity:.9}to{transform:translateY(100vh);opacity:0}}
+main.fresh>section:not([hidden])>*{animation:fresh .6s ease-out both}
+@keyframes fresh{from{opacity:.35;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){#ptrBand{display:none}main.fresh>section>*{animation:none}}
 #ss{position:fixed;inset:0;z-index:40}
 .ss-back{position:absolute;inset:0;background:rgba(0,0,0,.45);animation:fade .2s}
 .ss-panel{position:absolute;top:0;bottom:0;left:0;width:min(72vw,280px);background:var(--card);padding:calc(18px + env(safe-area-inset-top)) 12px 16px;overflow-y:auto;animation:slide .22s ease-out;border-radius:0 18px 18px 0}
@@ -180,8 +191,8 @@ function applySplash(c){c=c||splashCfg();
 applySplash();
 </script>
 <header><div class="hd-l"><h1 id="title" onclick="titleTap()">가계부</h1><span class="sync" id="sync" hidden>업데이트 중…</span></div><div class="hd-r"><div class="mnav" id="mnav" hidden><button onclick="moveMonth(-1)">‹</button><span id="mlabel"></span><button onclick="moveMonth(1)">›</button></div><button class="gear" id="gear" onclick="showKey(true)" aria-label="설정">⚙</button></div></header>
+<div id="ptr" aria-hidden="true"><i></i><i></i><i></i></div><div id="ptrBand"></div>
 <main>
-  <div id="ptr" hidden></div>
   <section id="v-key" hidden>
     <div class="card">
       <div class="sec">시작 화면 꾸미기</div>
@@ -449,28 +460,53 @@ function pickYear(){
 }
 function closeSide(){$('ss').hidden=true}
 // 맨 위에서 아래로 당기면 지금 화면을 서버에서 새로 받아옴
-let PT=null;
+let PT=null,PTB=false,PULL=0;
+const PT_TRIG=72,PT_HOLD=56;
+const rubber=dy=>dy<=0?0:150*(1-Math.exp(-dy/230));      // 당길수록 무거워짐
+function setPull(v,anim){
+  PULL=v;const m=document.querySelector('main'),p=$('ptr');
+  m.style.transition=p.style.transition=anim||'none';
+  m.style.transform=v?`translateY(${v}px)`:'';               // 쉴 때는 transform을 지워 다른 화면 요소에 영향 없게
+  p.style.top=$('ptr')._top+'px';p.style.height=v+'px';
+  if(!p.classList.contains('hop'))[...p.children].forEach((c,i)=>c.classList.toggle('on',v/PT_TRIG>(i+.5)/3.2));
+}
+function ptrCancel(){PT=null;setPull(0,'transform .45s cubic-bezier(.2,1.3,.4,1),height .45s cubic-bezier(.2,1.3,.4,1)')}
 addEventListener('touchstart',ev=>{
-  if(!S.boot||!['sum','list','year'].includes(S.view)||scrollY>0||DR||!$('bs').hidden||!$('ss').hidden||!$('v-key').hidden)return;
-  PT={y:ev.touches[0].clientY,d:0};
+  if(PTB||!S.boot||!['sum','list','year'].includes(S.view)||scrollY>0||DR||!$('bs').hidden||!$('ss').hidden||!$('v-key').hidden)return;
+  $('ptr')._top=document.querySelector('header').getBoundingClientRect().bottom;
+  PT={x:ev.touches[0].clientX,y:ev.touches[0].clientY,d:0};
 },{passive:true});
 addEventListener('touchmove',ev=>{
-  if(!PT)return;if(DR){PT=null;$('ptr').hidden=true;return}
-  PT.d=ev.touches[0].clientY-PT.y;const el=$('ptr');
-  if(PT.d>12){el.hidden=false;el.style.height=Math.min(PT.d*.45,56)+'px';el.textContent=PT.d>120?'↻ 놓으면 새로고침':'↓ 당겨서 새로고침'}
-  else el.hidden=true;
+  if(!PT)return;if(DR){ptrCancel();return}
+  const dx=ev.touches[0].clientX-PT.x,dy=ev.touches[0].clientY-PT.y;
+  if(PT.d===0&&Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>8){PT=null;return}   // 시트 표 좌우 밀기는 그대로
+  PT.d=dy;setPull(rubber(dy));
 },{passive:true});
-addEventListener('touchend',()=>{if(!PT)return;const go_=PT.d>120;PT=null;$('ptr').hidden=true;if(go_)hardRefresh()});
+addEventListener('touchend',()=>{if(!PT)return;const go_=PULL>=PT_TRIG;PT=null;if(go_)hardRefresh();else ptrCancel()});
+addEventListener('touchcancel',()=>{if(PT)ptrCancel()});
 async function hardRefresh(){
-  const m=S.month,v=S.view,mode=store.get('sumMode')||'vis';
+  const m=S.month,v=S.view,mode=store.get('sumMode')||'vis',p=$('ptr'),t0=Date.now();
+  PTB=true;setPull(PT_HOLD,'transform .3s cubic-bezier(.2,1.2,.4,1),height .3s cubic-bezier(.2,1.2,.4,1)');p.classList.add('hop');
+  let ok=false;
   try{
     if(v==='list'||(v==='sum'&&mode==='ana'))await loadMonth(m,true);
     if(v==='sum'&&mode==='ana'&&S.boot.months.includes(m-1))await loadMonth(m-1,true);
     if(v==='sum'&&mode!=='ana')await getSummary(m,true);
     if(v==='year')await getYearData(true);
     if(S.selMode)exitSel();
-    go(v);toast('새로고침했어요');
+    ok=true;
   }catch(e){if(e.auth)authLost(e);else toast(e.message)}
+  await new Promise(r=>setTimeout(r,Math.max(0,700-(Date.now()-t0))));   // 동전이 튀는 모습이 잠깐은 보이게
+  p.classList.remove('hop');[...p.children].forEach(c=>c.classList.remove('on'));
+  setPull(0,'transform .55s cubic-bezier(.2,1.25,.4,1),height .55s cubic-bezier(.2,1.25,.4,1)');
+  if(ok&&S.view===v){
+    go(v);
+    const mn=document.querySelector('main'),b=$('ptrBand');
+    mn.classList.remove('fresh');b.classList.remove('go');void b.offsetWidth;
+    b.style.top=p._top+'px';mn.classList.add('fresh');b.classList.add('go');
+    setTimeout(()=>{mn.classList.remove('fresh');b.classList.remove('go')},1400);
+  }
+  PTB=false;
 }
 function titleTap(){if(S.boot&&YEAR_VIEWS.includes(S.view)&&$('v-key').hidden&&$('v-err').hidden)pickYear()}
 async function switchYear(y){
